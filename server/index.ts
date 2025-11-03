@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from "express";
 import { config } from "dotenv";
 import { paymentMiddleware, Resource, type SolanaAddress } from "x402-express";
-import { getPaywallHtml } from "./paywall/index.js";
+import { getPaywallHtml } from "./paywall/index";
 config();
 
 const facilitatorUrl = process.env.FACILITATOR_URL as Resource;
