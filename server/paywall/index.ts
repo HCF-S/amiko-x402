@@ -1,4 +1,4 @@
-import { PAYWALL_TEMPLATE } from "./gen/template";
+import { PAYWALL_TEMPLATE } from "./gen/template.js";
 //import { config } from "../types/shared/evm/config";
 //import { PaymentRequirements } from "../types/verify";
 
