@@ -47,6 +47,9 @@ if (solanaAddress) {
         "GET /time": {
           price: "$0.01",
           network: getNetworkName(true),
+          config:{
+            customPaywallHtml: 'hello',
+          }
         },
       },
       { url: facilitatorUrl },
