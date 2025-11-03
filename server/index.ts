@@ -1,6 +1,7 @@
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import { config } from "dotenv";
 import { paymentMiddleware, Resource, type SolanaAddress } from "x402-express";
+import { getPaywallHtml } from "./paywall/index.js";
 config();
 
 const facilitatorUrl = process.env.FACILITATOR_URL as Resource;
@@ -9,6 +10,60 @@ const solanaAddress = process.env.SOLANA_ADDRESS as SolanaAddress;
 const svmRpcUrl = process.env.SVM_RPC_URL;
 const PORT = process.env.PORT || 3001;
 const USE_MAINNET = process.env.USE_MAINNET === "true";
+
+// Custom paywall middleware wrapper that uses our getPaywallHtml function
+function customPaywallMiddleware(
+  address: `0x${string}` | SolanaAddress,
+  routes: any,
+  facilitatorConfig: any
+) {
+  const baseMiddleware = paymentMiddleware(address, routes, facilitatorConfig);
+  
+  return (req: Request, res: Response, next: NextFunction) => {
+    // Intercept the response to inject custom paywall HTML
+    const originalSend = res.send;
+    const originalStatus = res.status;
+    let statusCode = 200;
+    
+    res.status = function(code: number) {
+      statusCode = code;
+      return originalStatus.call(this, code);
+    };
+    
+    res.send = function(body: any) {
+      // If it's a 402 response with HTML, extract config and use our custom paywall
+      if (statusCode === 402 && typeof body === 'string' && body.includes('window.x402')) {
+        try {
+          // Extract the window.x402 configuration from the default paywall HTML
+          const configMatch = body.match(/window\.x402\s*=\s*({[\s\S]*?});/);
+          if (configMatch) {
+            // Parse the configuration (safely)
+            const configStr = configMatch[1];
+            const x402Config = eval(`(${configStr})`);
+            
+            // Generate our custom paywall HTML with the same configuration
+            const customHtml = getPaywallHtml({
+              amount: x402Config.amount,
+              paymentRequirements: x402Config.paymentRequirements,
+              currentUrl: x402Config.currentUrl,
+              testnet: x402Config.testnet,
+              appName: x402Config.appName || "Amiko x402 Server",
+              appLogo: x402Config.appLogo,
+              cdpClientKey: x402Config.cdpClientKey || process.env.CDP_CLIENT_KEY,
+              sessionTokenEndpoint: x402Config.sessionTokenEndpoint,
+            });
+            return originalSend.call(this, customHtml);
+          }
+        } catch (error) {
+          console.error('Failed to parse x402 config from paywall HTML:', error);
+        }
+      }
+      return originalSend.call(this, body);
+    };
+    
+    baseMiddleware(req, res, next);
+  };
+}
 
 if (!facilitatorUrl) {
   console.error("Missing required environment variable: FACILITATOR_URL");
@@ -41,15 +96,12 @@ const getNetworkDisplayName = (isSolana: boolean) => {
 // Apply Solana payment middleware
 if (solanaAddress) {
   app.use(
-    paymentMiddleware(
+    customPaywallMiddleware(
       solanaAddress,
       {
         "GET /time": {
           price: "$0.01",
           network: getNetworkName(true),
-          config:{
-            customPaywallHtml: 'hello',
-          }
         },
       },
       { url: facilitatorUrl },
@@ -60,7 +112,7 @@ if (solanaAddress) {
 // Apply Base payment middleware
 if (baseAddress) {
   app.use(
-    paymentMiddleware(
+    customPaywallMiddleware(
       baseAddress,
       {
         "GET /base/time": {
