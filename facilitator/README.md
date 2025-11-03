@@ -200,6 +200,6 @@ For production use, consider using:
 - [Coinbase Developer Platform](https://www.coinbase.com/developer-platform)
 - [x402 GitHub Repository](https://github.com/coinbase/x402)
 
-## License
+## COVERT 
 
-MIT
+node -e "console.log(require('bs58').encode(Buffer.from('YOUR_HEX_KEY'.replace('0x',''), 'hex')))"
