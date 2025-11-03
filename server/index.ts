@@ -1,6 +1,7 @@
-import express, { Request, Response, NextFunction } from "express";
+import { Hono } from "hono";
+import { serve } from "@hono/node-server";
 import { config } from "dotenv";
-import { paymentMiddleware, Resource, type SolanaAddress } from "x402-express";
+import { paymentMiddleware, type Resource, type SolanaAddress } from "x402-hono";
 import { getPaywallHtml } from "./paywall/index.js";
 config();
 
@@ -8,7 +9,7 @@ const facilitatorUrl = process.env.FACILITATOR_URL as Resource;
 const baseAddress = process.env.BASE_ADDRESS as `0x${string}`;
 const solanaAddress = process.env.SOLANA_ADDRESS as SolanaAddress;
 const svmRpcUrl = process.env.SVM_RPC_URL;
-const PORT = process.env.PORT || 3001;
+const PORT = Number(process.env.PORT) || 3001;
 const USE_MAINNET = process.env.USE_MAINNET === "true";
 
 // Custom paywall middleware wrapper that uses our getPaywallHtml function
@@ -19,29 +20,20 @@ function customPaywallMiddleware(
 ) {
   const baseMiddleware = paymentMiddleware(address, routes, facilitatorConfig);
   
-  return (req: Request, res: Response, next: NextFunction) => {
-    // Intercept the response to inject custom paywall HTML
-    const originalSend = res.send;
-    const originalStatus = res.status;
-    let statusCode = 200;
+  return async (c: any, next: any) => {
+    // Call the x402-hono middleware
+    const result = await baseMiddleware(c, next);
     
-    res.status = function(code: number) {
-      statusCode = code;
-      return originalStatus.call(this, code);
-    };
-    
-    res.send = function(body: any) {
-      // If it's a 402 response with HTML, extract config and use our custom paywall
-      if (statusCode === 402 && typeof body === 'string' && body.includes('window.x402')) {
+    // If it's a 402 response with HTML, extract config and use our custom paywall
+    if (result && result.status === 402) {
+      const body = await result.text();
+      if (body.includes('window.x402')) {
         try {
-          // Extract the window.x402 configuration from the default paywall HTML
           const configMatch = body.match(/window\.x402\s*=\s*({[\s\S]*?});/);
           if (configMatch) {
-            // Parse the configuration (safely)
             const configStr = configMatch[1];
             const x402Config = eval(`(${configStr})`);
             
-            // Generate our custom paywall HTML with the same configuration
             const customHtml = getPaywallHtml({
               amount: x402Config.amount,
               paymentRequirements: x402Config.paymentRequirements,
@@ -52,16 +44,16 @@ function customPaywallMiddleware(
               cdpClientKey: x402Config.cdpClientKey || process.env.CDP_CLIENT_KEY,
               sessionTokenEndpoint: x402Config.sessionTokenEndpoint,
             });
-            return originalSend.call(this, customHtml);
+            return c.html(customHtml, 402);
           }
         } catch (error) {
           console.error('Failed to parse x402 config from paywall HTML:', error);
         }
       }
-      return originalSend.call(this, body);
-    };
+      return result;
+    }
     
-    baseMiddleware(req, res, next);
+    return result;
   };
 }
 
@@ -75,7 +67,7 @@ if (!baseAddress && !solanaAddress) {
   process.exit(1);
 }
 
-const app = express();
+const app = new Hono();
 
 // Network configuration helpers
 const getNetworkName = (isSolana: boolean) => {
@@ -96,11 +88,16 @@ const getNetworkDisplayName = (isSolana: boolean) => {
 // Apply Solana payment middleware
 if (solanaAddress) {
   app.use(
+    "*",
     customPaywallMiddleware(
       solanaAddress,
       {
         "GET /time": {
           price: "$0.01",
+          network: getNetworkName(true),
+        },
+        "GET /osint": {
+          price: "$1.00",
           network: getNetworkName(true),
         },
       },
@@ -112,6 +109,7 @@ if (solanaAddress) {
 // Apply Base payment middleware
 if (baseAddress) {
   app.use(
+    "*",
     customPaywallMiddleware(
       baseAddress,
       {
@@ -126,7 +124,7 @@ if (baseAddress) {
 }
 
 // Health check endpoint
-app.get("/", (req: Request, res: Response) => {
+app.get("/", (c) => {
   const endpoints: Record<string, any> = {};
 
   if (solanaAddress) {
@@ -136,6 +134,13 @@ app.get("/", (req: Request, res: Response) => {
       cost: "$0.01",
       network: getNetworkName(true),
       description: "Get current UTC time (Solana)",
+    };
+    endpoints.osint = {
+      path: "/osint",
+      method: "GET",
+      cost: "$1.00",
+      network: getNetworkName(true),
+      description: "Twitter OSINT analysis (requires ?handle=username)",
     };
   }
 
@@ -149,7 +154,7 @@ app.get("/", (req: Request, res: Response) => {
     };
   }
 
-  res.json({
+  return c.json({
     service: "Amiko x402 Server",
     status: "running",
     mode: USE_MAINNET ? "MAINNET" : "TESTNET",
@@ -172,36 +177,64 @@ const getTimeResponse = (isSolana: boolean) => {
 // Solana time endpoint - costs $0.01
 // Payment is automatically handled by x402-express middleware
 if (solanaAddress) {
-  app.get("/time", (req: Request, res: Response) => {
-    res.json(getTimeResponse(true));
+  app.get("/time", (c) => {
+    return c.json(getTimeResponse(true));
   });
 }
 
 // Base time endpoint - costs $0.01
 // Payment is automatically handled by x402-express middleware
 if (baseAddress) {
-  app.get("/base/time", (req: Request, res: Response) => {
-    res.json(getTimeResponse(false));
+  app.get("/base/time", (c) => {
+    return c.json(getTimeResponse(false));
+  });
+}
+
+// OSINT endpoint - analyzes Twitter user profile
+// Payment is automatically handled by x402-express middleware
+if (solanaAddress) {
+  app.get("/osint", (c) => {
+    const twitterHandle = c.req.query("handle");
+    
+    if (!twitterHandle) {
+      return c.json({
+        error: "Missing required parameter: handle",
+        usage: "GET /osint?handle=username"
+      }, 400);
+    }
+    
+    // TODO: Implement OSINT analysis logic
+    // For now, return a placeholder response
+    return c.json({
+      handle: twitterHandle,
+      status: "pending",
+      message: "OSINT analysis not yet implemented",
+      timestamp: new Date().toISOString()
+    });
   });
 }
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Amiko x402 Server running at http://localhost:${PORT}`);
-  console.log(`Mode: ${USE_MAINNET ? "MAINNET" : "TESTNET"}`);
-  console.log(`Facilitator: ${facilitatorUrl}`);
-  
-  if (svmRpcUrl) {
-    console.log(`Solana RPC: ${svmRpcUrl}`);
-  }
-  
-  console.log(`\nAvailable endpoints:`);
-  
-  if (solanaAddress) {
-    console.log(`  GET /time - Current UTC time ($0.01) [${getNetworkDisplayName(true)}]`);
-  }
-  
-  if (baseAddress) {
-    console.log(`  GET /base/time - Current UTC time ($0.01) [${getNetworkDisplayName(false)}]`);
-  }
+console.log(`🚀 Amiko x402 Server running at http://localhost:${PORT}`);
+console.log(`Mode: ${USE_MAINNET ? "MAINNET" : "TESTNET"}`);
+console.log(`Facilitator: ${facilitatorUrl}`);
+
+if (svmRpcUrl) {
+  console.log(`Solana RPC: ${svmRpcUrl}`);
+}
+
+console.log(`\nAvailable endpoints:`);
+
+if (solanaAddress) {
+  console.log(`  GET /time - Current UTC time ($0.01) [${getNetworkDisplayName(true)}]`);
+  console.log(`  GET /osint?handle=<twitter_handle> - Twitter OSINT analysis ($1.00) [${getNetworkDisplayName(true)}]`);
+}
+
+if (baseAddress) {
+  console.log(`  GET /base/time - Current UTC time ($0.01) [${getNetworkDisplayName(false)}]`);
+}
+
+serve({
+  fetch: app.fetch,
+  port: PORT,
 });

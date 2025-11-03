@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@coinbase/onchainkit": "^0.38.14",
+    "@hono/node-server": "^1.19.6",
     "@scure/base": "^1.2.6",
     "@solana-program/compute-budget": "^0.8.0",
     "@solana-program/token": "^0.5.1",
@@ -25,18 +26,17 @@
     "@wallet-standard/features": "^1.1.0",
     "buffer": "^6.0.3",
     "dotenv": "^16.4.7",
-    "express": "^4.18.2",
+    "hono": "^4.10.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "viem": "^2.21.26",
     "wagmi": "^2.15.6",
     "x402": "^0.7.1",
-    "x402-express": "^0.7.1",
+    "x402-hono": "^0.7.1",
     "zod": "^3.24.2"
   },
   "devDependencies": {
     "@craftamap/esbuild-plugin-html": "^0.9.0",
-    "@types/express": "^5.0.1",
     "@types/node": "^22.13.4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
