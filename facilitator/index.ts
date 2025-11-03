@@ -23,6 +23,7 @@ const EVM_PRIVATE_KEY = process.env.EVM_PRIVATE_KEY || "";
 const SVM_PRIVATE_KEY = process.env.SVM_PRIVATE_KEY || "";
 const SVM_RPC_URL = process.env.SVM_RPC_URL || "";
 const PORT = process.env.PORT || 3000;
+const USE_MAINNET = process.env.USE_MAINNET === "true";
 
 if (!EVM_PRIVATE_KEY && !SVM_PRIVATE_KEY) {
   console.error("Missing required environment variables: EVM_PRIVATE_KEY or SVM_PRIVATE_KEY");
@@ -80,22 +81,24 @@ app.get("/supported", async (req: Request, res: Response) => {
 
     // Base (EVM)
     if (EVM_PRIVATE_KEY) {
+      const evmNetwork = USE_MAINNET ? "base" : "base-sepolia";
       kinds.push({
         x402Version: 1,
         scheme: "exact",
-        network: "base-sepolia",
+        network: evmNetwork,
       });
     }
 
     // Solana (SVM)
     if (SVM_PRIVATE_KEY) {
-      const signer = await createSigner("solana-devnet", SVM_PRIVATE_KEY);
+      const svmNetwork = USE_MAINNET ? "solana" : "solana-devnet";
+      const signer = await createSigner(svmNetwork, SVM_PRIVATE_KEY);
       const feePayer = isSvmSignerWallet(signer) ? signer.address : undefined;
 
       kinds.push({
         x402Version: 1,
         scheme: "exact",
-        network: "solana-devnet",
+        network: svmNetwork,
         extra: {
           feePayer,
         },
@@ -205,7 +208,8 @@ app.post("/settle", async (req: Request, res: Response) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Amiko x402 Facilitator running at http://localhost:${PORT}`);
+  console.log(`Mode: ${USE_MAINNET ? "MAINNET" : "TESTNET"}`);
   console.log(`Supported networks:`);
-  if (EVM_PRIVATE_KEY) console.log(`  - Base Sepolia (EVM)`);
-  if (SVM_PRIVATE_KEY) console.log(`  - Solana Devnet (SVM)`);
+  if (EVM_PRIVATE_KEY) console.log(`  - ${USE_MAINNET ? "Base" : "Base Sepolia"} (EVM)`);
+  if (SVM_PRIVATE_KEY) console.log(`  - ${USE_MAINNET ? "Solana Mainnet" : "Solana Devnet"} (SVM)`);
 });

@@ -1,6 +1,6 @@
 # Amiko x402 Facilitator
 
-A production-ready x402 facilitator service that handles payment verification and settlement for the x402 payment protocol. This facilitator supports both **Base Sepolia** (EVM) and **Solana Devnet** (SVM) networks.
+A production-ready x402 facilitator service that handles payment verification and settlement for the x402 payment protocol. This facilitator supports both **Base** (EVM) and **Solana** (SVM) networks on testnet and mainnet.
 
 ## Overview
 
@@ -12,7 +12,8 @@ The facilitator provides three main endpoints:
 
 ## Features
 
-- ✅ **Multi-chain support**: Base Sepolia (EVM) and Solana Devnet (SVM)
+- ✅ **Multi-chain support**: Base (EVM) and Solana (SVM)
+- ✅ **Mainnet & Testnet**: Toggle between networks with environment variable
 - ✅ **Payment verification**: Validates payment payloads before settlement
 - ✅ **Automatic settlement**: Signs and broadcasts transactions
 - ✅ **CORS enabled**: Ready for frontend integration
@@ -45,10 +46,14 @@ cp .env.example .env
 3. Configure your environment variables:
 
 ```env
-# For Base Sepolia support
+# Network mode (set to "true" for mainnet)
+USE_MAINNET=false
+
+# For Base support (testnet or mainnet)
 EVM_PRIVATE_KEY=0xYourPrivateKeyHere
 
-# For Solana Devnet support
+# For Solana support (testnet or mainnet)
+# IMPORTANT: Must be base58 encoded, NOT hex!
 SVM_PRIVATE_KEY=YourBase58EncodedSolanaPrivateKeyHere
 
 # Optional: Custom Solana RPC
@@ -158,16 +163,35 @@ Settles an x402 payment by signing and broadcasting the transaction.
 
 ## Network Support
 
-### Base Sepolia (EVM)
+### Testnet (Default)
+
+Set `USE_MAINNET=false` or leave it empty in your `.env` file.
+
+**Base Sepolia (EVM)**
 - Network: `base-sepolia`
 - Requires: `EVM_PRIVATE_KEY`
 - Testnet faucet: https://www.coinbase.com/faucets/base-ethereum-sepolia-faucet
 
-### Solana Devnet (SVM)
+**Solana Devnet (SVM)**
 - Network: `solana-devnet`
-- Requires: `SVM_PRIVATE_KEY`
+- Requires: `SVM_PRIVATE_KEY` (base58 format)
 - Testnet faucet: https://faucet.solana.com
 - Optional: Custom RPC via `SVM_RPC_URL`
+
+### Mainnet
+
+Set `USE_MAINNET=true` in your `.env` file.
+
+**Base Mainnet (EVM)**
+- Network: `base`
+- Requires: `EVM_PRIVATE_KEY` with real ETH
+- ⚠️ **WARNING**: Uses real funds on mainnet
+
+**Solana Mainnet (SVM)**
+- Network: `solana`
+- Requires: `SVM_PRIVATE_KEY` (base58 format) with real SOL
+- Optional: Custom RPC via `SVM_RPC_URL` (e.g., `https://api.mainnet-beta.solana.com`)
+- ⚠️ **WARNING**: Uses real funds on mainnet
 
 ## Development
 
