@@ -11,10 +11,10 @@ import { createPublicClient, formatUnits, http, publicActions } from "viem";
 import { base, baseSepolia } from "viem/chains";
 import { useAccount, useSwitchChain, useWalletClient } from "wagmi";
 
-import type { PaymentRequirements } from "../../types/verify";
-import { exact } from "../../schemes";
-import { getUSDCBalance } from "../../shared/evm";
-import type { Network } from "../../types/shared";
+import type { PaymentRequirements } from "../x402/types/verify";
+import { exact } from "../x402/schemes";
+import { getUSDCBalance } from "../x402/shared/evm";
+import type { Network } from "../x402/types/shared";
 
 import { Spinner } from "./Spinner";
 import { useOnrampSessionToken } from "./useOnrampSessionToken";

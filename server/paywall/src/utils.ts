@@ -1,4 +1,4 @@
-import type { PaymentRequirements } from "../../types";
+import type { PaymentRequirements } from "../x402/types";
 
 /**
  * Safely clones an object without prototype pollution

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { formatUnits } from "viem";
 import type { WalletAccount } from "@wallet-standard/base";
-import type { PaymentRequirements } from "../../../types/verify";
-import { getRpcClient } from "../../../utils/rpc";
+import type { PaymentRequirements } from "../../x402/types/verify";
+import { getRpcClient } from "../../x402/utils/rpc";
 import type { Address } from "@solana/kit";
 import {
   TOKEN_PROGRAM_ADDRESS,

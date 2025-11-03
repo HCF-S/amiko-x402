@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import type { PaymentRequirements } from "../../types/verify";
+import type { PaymentRequirements } from "../x402/types/verify";
 import { choosePaymentRequirement, isEvmNetwork, isSvmNetwork } from "./paywallUtils";
 import { EvmPaywall } from "./EvmPaywall";
 import { SolanaPaywall } from "./SolanaPaywall";
