@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "nodemon --watch 'src' --ext 'ts' --ignore '*.test.ts' --exec tsx index.ts",
+    "dev": "tsx index.ts",
     "build": "tsc",
     "build:paywall": "tsx paywall/build.ts",
     "start": "node dist/index.js"

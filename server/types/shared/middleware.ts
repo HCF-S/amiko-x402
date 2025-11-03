@@ -1,9 +1,10 @@
-import { CreateHeaders } from "../../verify";
 import { Money } from "./money";
 import { Network } from "./network";
 import { Resource } from "./resource";
 import { EvmSigner } from "./evm";
 import { HTTPRequestStructure } from "..";
+
+export type CreateHeaders = () => Promise<Record<string, string>> | Record<string, string>;
 
 export type FacilitatorConfig = {
   url: Resource;

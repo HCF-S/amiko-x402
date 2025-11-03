@@ -1,6 +1,20 @@
 import { PAYWALL_TEMPLATE } from "./gen/template";
-import { config } from "../types/shared/evm/config";
-import { PaymentRequirements } from "../types/verify";
+//import { config } from "../types/shared/evm/config";
+//import { PaymentRequirements } from "../types/verify";
+
+interface PaymentRequirements {
+  scheme: "exact";
+  network: string;
+  maxAmountRequired: string;
+  resource: string;
+  description: string;
+  mimeType: string;
+  outputSchema?: Record<string, any>;
+  payTo: string;
+  maxTimeoutSeconds: number;
+  asset: string;
+  extra?: Record<string, any>;
+}
 
 interface PaywallOptions {
   amount: number;
@@ -66,7 +80,6 @@ export function getPaywallHtml({
       testnet: ${testnet},
       currentUrl: "${escapeString(currentUrl)}",
       config: {
-        chainConfig: ${JSON.stringify(config)},
       },
       cdpClientKey: "${escapeString(cdpClientKey || "")}",
       appName: "${escapeString(appName || "")}",
