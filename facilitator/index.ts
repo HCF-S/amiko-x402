@@ -16,6 +16,7 @@ import {
   isSvmSignerWallet,
   type X402Config,
 } from "x402/types";
+import { getFacilitatorPage } from "./page.js";
 
 config();
 
@@ -61,17 +62,16 @@ type SettleRequest = {
   paymentRequirements: PaymentRequirements;
 };
 
-// Health check endpoint
+// Health check endpoint - HTML page
 app.get("/", (req: Request, res: Response) => {
-  res.json({
-    service: "Amiko x402 Facilitator",
-    status: "running",
-    endpoints: {
-      supported: "/supported",
-      verify: "/verify",
-      settle: "/settle",
-    },
+  const html = getFacilitatorPage({
+    evmNetwork: EVM_PRIVATE_KEY ? (USE_MAINNET ? "Base Mainnet" : "Base Sepolia") : undefined,
+    svmNetwork: SVM_PRIVATE_KEY ? (USE_MAINNET ? "Solana Mainnet" : "Solana Devnet") : undefined,
+    useMainnet: USE_MAINNET,
   });
+  
+  res.setHeader('Content-Type', 'text/html');
+  res.send(html);
 });
 
 // Get supported payment kinds
