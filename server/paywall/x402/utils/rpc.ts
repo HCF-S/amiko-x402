@@ -31,7 +31,7 @@ function getRpcUrl(network: string): string {
   
   // Use custom RPC if provided and not empty
   if (envRpcUrl && envRpcUrl !== "") {
-    console.log(`[RPC] Using custom SVM_RPC_URL: ${envRpcUrl}`);
+    //console.log(`[RPC] Using custom SVM_RPC_URL: ${envRpcUrl}`);
     return envRpcUrl;
   }
   
