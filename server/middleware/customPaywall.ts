@@ -2,8 +2,8 @@ import { paymentMiddleware, type Resource, type SolanaAddress } from "x402-hono"
 import { getPaywallHtml } from "../paywall/index.js";
 
 /**
- * Custom paywall middleware wrapper that uses our getPaywallHtml function
- * to inject custom paywall HTML when x402 payment is required
+ * Creates payment middleware with custom paywall HTML
+ * Wraps the x402 payment middleware to intercept and replace the default paywall
  */
 export function customPaywallMiddleware(
   address: `0x${string}` | SolanaAddress,
@@ -13,47 +13,45 @@ export function customPaywallMiddleware(
   const baseMiddleware = paymentMiddleware(address, routes, facilitatorConfig);
   
   return async (c: any, next: any) => {
-    // Intercept the response by wrapping next()
-    let paymentRequired = false;
-    let x402ConfigData: any = null;
+    // Store original html method
+    const originalHtml = c.html.bind(c);
     
-    // Override c.html to capture 402 responses from x402 middleware
-    const originalHtml = c.html;
-    c.html = (content: any, status?: number) => {
+    // Override html method to intercept 402 paywall responses
+    c.html = (content: string, status?: number) => {
+      // If it's a 402 response with the default x402 paywall, replace with custom
       if (status === 402 && typeof content === 'string' && content.includes('window.x402')) {
-        paymentRequired = true;
-        // Extract x402 config from the HTML
         try {
+          // Extract the x402 config from the default paywall HTML
           const configMatch = content.match(/window\.x402\s*=\s*({[\s\S]*?});/);
           if (configMatch) {
             const configStr = configMatch[1];
-            x402ConfigData = eval(`(${configStr})`);
+            // Parse the config safely
+            const x402Config = eval(`(${configStr})`);
+            
+            // Generate our custom paywall HTML with the same config
+            const customHtml = getPaywallHtml({
+              amount: x402Config.amount,
+              paymentRequirements: x402Config.paymentRequirements,
+              currentUrl: x402Config.currentUrl,
+              testnet: x402Config.testnet,
+              appName: x402Config.appName || "Amiko x402 Server",
+              appLogo: x402Config.appLogo || "",
+              cdpClientKey: x402Config.cdpClientKey || process.env.CDP_CLIENT_KEY || "",
+              sessionTokenEndpoint: x402Config.sessionTokenEndpoint || "",
+            });
+            
+            return originalHtml(customHtml, 402);
           }
         } catch (error) {
-          console.error('Failed to parse x402 config:', error);
+          console.error('Failed to parse x402 config from paywall HTML:', error);
         }
-        // Don't return yet, we'll handle it after
-        return originalHtml.call(c, content, status);
       }
-      return originalHtml.call(c, content, status);
+      
+      // For all other responses, use original method
+      return originalHtml(content, status);
     };
     
-    // Call the x402-hono middleware
-    await baseMiddleware(c, next);
-    
-    // If payment was required and we captured the config, return custom HTML
-    if (paymentRequired && x402ConfigData) {
-      const customHtml = getPaywallHtml({
-        amount: x402ConfigData.amount,
-        paymentRequirements: x402ConfigData.paymentRequirements,
-        currentUrl: x402ConfigData.currentUrl,
-        testnet: x402ConfigData.testnet,
-        appName: x402ConfigData.appName || "Amiko x402 Server",
-        appLogo: x402ConfigData.appLogo,
-        cdpClientKey: x402ConfigData.cdpClientKey || process.env.CDP_CLIENT_KEY,
-        sessionTokenEndpoint: x402ConfigData.sessionTokenEndpoint,
-      });
-      return originalHtml.call(c, customHtml, 402);
-    }
+    // Call the base x402 middleware
+    return await baseMiddleware(c, next);
   };
 }
