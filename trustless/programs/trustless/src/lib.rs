@@ -1,4 +1,10 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::{
+    instruction::Instruction,
+    program::invoke,
+    sysvar::instructions::{load_instruction_at_checked, ID as INSTRUCTIONS_ID},
+};
+use anchor_spl::token::{Token, TokenAccount, Transfer};
 
 declare_id!("CtZrqYPSzPipUnxB55hBzCHrQxtBfWPujyrnDBDeWpWe");
 
@@ -47,13 +53,79 @@ pub mod trustless {
 
     /// Register a job (called by x402 facilitator)
     /// Supports lazy agent creation
+    /// Verifies USDC payment from client to agent by checking transaction instructions
     pub fn register_job(
         ctx: Context<RegisterJob>,
-        payment_amount: u64,
+        transfer_instruction_index: u8,
     ) -> Result<()> {
         let agent_account = &mut ctx.accounts.agent_account;
         let job_record = &mut ctx.accounts.job_record;
         let clock = Clock::get()?;
+
+        // Verify payment: check that client token account transferred to agent token account
+        let client_token = &ctx.accounts.client_token_account;
+        let agent_token = &ctx.accounts.agent_token_account;
+        
+        // Verify both accounts use the same USDC mint
+        require!(
+            client_token.mint == agent_token.mint,
+            ErrorCode::TokenMintMismatch
+        );
+        
+        // Verify token accounts belong to correct owners
+        require!(
+            client_token.owner == ctx.accounts.client.key(),
+            ErrorCode::InvalidClientTokenAccount
+        );
+        require!(
+            agent_token.owner == ctx.accounts.agent.key(),
+            ErrorCode::InvalidAgentTokenAccount
+        );
+        
+        // Load and verify the transfer instruction from the current transaction
+        let ixs = ctx.accounts.instruction_sysvar.to_account_info();
+        let transfer_ix = load_instruction_at_checked(
+            transfer_instruction_index as usize,
+            &ixs,
+        )?;
+        
+        // Verify it's a token program instruction
+        require!(
+            transfer_ix.program_id == anchor_spl::token::ID,
+            ErrorCode::InvalidTransferInstruction
+        );
+        
+        // Parse SPL Token Transfer instruction (instruction discriminator = 3)
+        // Format: [discriminator: u8, amount: u64]
+        require!(
+            transfer_ix.data.len() >= 9 && transfer_ix.data[0] == 3,
+            ErrorCode::InvalidTransferInstruction
+        );
+        
+        // Extract transfer amount from instruction data
+        let amount_bytes: [u8; 8] = transfer_ix.data[1..9]
+            .try_into()
+            .map_err(|_| ErrorCode::InvalidTransferAmount)?;
+        let payment_amount = u64::from_le_bytes(amount_bytes);
+        
+        // Verify the transfer instruction accounts match our expected accounts
+        // SPL Token Transfer accounts: [source, destination, authority]
+        require!(
+            transfer_ix.accounts.len() >= 3,
+            ErrorCode::InvalidTransferInstruction
+        );
+        require!(
+            transfer_ix.accounts[0].pubkey == client_token.key(),
+            ErrorCode::TransferSourceMismatch
+        );
+        require!(
+            transfer_ix.accounts[1].pubkey == agent_token.key(),
+            ErrorCode::TransferDestinationMismatch
+        );
+        require!(
+            transfer_ix.accounts[2].pubkey == ctx.accounts.client.key(),
+            ErrorCode::TransferAuthorityMismatch
+        );
 
         // Lazy agent creation if account is being initialized
         if agent_account.agent == Pubkey::default() {
@@ -252,7 +324,7 @@ pub struct RegisterJob<'info> {
         init,
         payer = facilitator,
         space = 8 + std::mem::size_of::<JobRecord>(),
-        seeds = [b"job", job_id.key().as_ref()],
+        seeds = [b"job", payment_tx.key().as_ref()],
         bump
     )]
     pub job_record: Account<'info, JobRecord>,
@@ -263,22 +335,36 @@ pub struct RegisterJob<'info> {
     /// CHECK: Client wallet address
     pub client: UncheckedAccount<'info>,
     
-    /// CHECK: Payment transaction reference
+    /// Client's USDC token account (sender)
+    #[account(
+        constraint = client_token_account.owner == client.key() @ ErrorCode::InvalidClientTokenAccount
+    )]
+    pub client_token_account: Account<'info, TokenAccount>,
+    
+    /// Agent's USDC token account (receiver)
+    #[account(
+        constraint = agent_token_account.owner == agent.key() @ ErrorCode::InvalidAgentTokenAccount
+    )]
+    pub agent_token_account: Account<'info, TokenAccount>,
+    
+    /// CHECK: Payment transaction reference (used as job identifier)
     pub payment_tx: UncheckedAccount<'info>,
     
-    /// CHECK: Unique job identifier
-    pub job_id: UncheckedAccount<'info>,
+    /// CHECK: Instruction sysvar for reading transaction instructions
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub instruction_sysvar: UncheckedAccount<'info>,
     
     #[account(mut)]
     pub facilitator: Signer<'info>,
     
     pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
 }
 
 #[derive(Accounts)]
 pub struct SubmitFeedback<'info> {
     #[account(
-        seeds = [b"job", job_record.job_id.as_ref()],
+        seeds = [b"job", proof_of_payment.key().as_ref()],
         bump
     )]
     pub job_record: Account<'info, JobRecord>,
@@ -294,7 +380,7 @@ pub struct SubmitFeedback<'info> {
         init,
         payer = client,
         space = 8 + std::mem::size_of::<FeedbackRecord>(),
-        seeds = [b"feedback", job_record.job_id.as_ref(), client.key().as_ref()],
+        seeds = [b"feedback", job_record.job_id.as_ref()],
         bump
     )]
     pub feedback_record: Account<'info, FeedbackRecord>,
@@ -359,4 +445,28 @@ pub enum ErrorCode {
     
     #[msg("Proof of payment does not match job record")]
     InvalidProofOfPayment,
+    
+    #[msg("Token mint mismatch between client and agent accounts")]
+    TokenMintMismatch,
+    
+    #[msg("Client token account owner does not match client")]
+    InvalidClientTokenAccount,
+    
+    #[msg("Agent token account owner does not match agent")]
+    InvalidAgentTokenAccount,
+    
+    #[msg("Invalid transfer instruction")]
+    InvalidTransferInstruction,
+    
+    #[msg("Invalid transfer amount format")]
+    InvalidTransferAmount,
+    
+    #[msg("Transfer source account mismatch")]
+    TransferSourceMismatch,
+    
+    #[msg("Transfer destination account mismatch")]
+    TransferDestinationMismatch,
+    
+    #[msg("Transfer authority mismatch")]
+    TransferAuthorityMismatch,
 }
