@@ -20,6 +20,9 @@ export const Header = () => {
               <Link href="/agents" className="text-sm font-medium hover:text-primary transition-colors">
                 Agents
               </Link>
+              <Link href="/services" className="text-sm font-medium hover:text-primary transition-colors">
+                Services
+              </Link>
               <Link href="/my-agent" className="text-sm font-medium hover:text-primary transition-colors">
                 My Agent
               </Link>

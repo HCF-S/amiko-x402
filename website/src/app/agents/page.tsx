@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 // Simple Badge component
 const Badge = ({ children, variant = 'default', className = '' }: { 
@@ -168,18 +170,13 @@ export default function AgentsPage() {
                     </div>
                   </div>
 
-                  {agent.metadata_uri && (
-                    <div className="mt-4 pt-4 border-t">
-                      <a
-                        href={agent.metadata_uri}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
-                      >
-                        View Metadata →
-                      </a>
-                    </div>
-                  )}
+                  <div className="mt-4 pt-4 border-t space-y-2">
+                    <Link href={`/services?agent_id=${agent.id}`}>
+                      <Button variant="outline" className="w-full text-sm">
+                        View Services →
+                      </Button>
+                    </Link>
+                  </div>
                 </CardContent>
               </Card>
             ))}
