@@ -98,9 +98,9 @@ export default function Home() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Link href="/register-agent">
+              <Link href="/my-agent">
                 <Button size="lg" className="w-full">
-                  Register as Agent
+                  Manage My Agent
                 </Button>
               </Link>
             </CardContent>

@@ -1,26 +1,92 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useTrustlessProgram } from '@/hooks/useTrustlessProgram';
-import { registerAgent } from '@/lib/program';
+import { registerAgent, updateAgent, getAgentPDA, type AgentAccount } from '@/lib/program';
 
 type InputMode = 'url' | 'json';
+type PageMode = 'loading' | 'register' | 'update';
 
-export default function RegisterAgentPage() {
+export default function MyAgentPage() {
   const { publicKey } = useWallet();
-  const { program } = useTrustlessProgram();
+  const { program, connection } = useTrustlessProgram();
   
+  const [pageMode, setPageMode] = useState<PageMode>('loading');
+  const [agentAccount, setAgentAccount] = useState<AgentAccount | null>(null);
   const [inputMode, setInputMode] = useState<InputMode>('url');
   const [metadata, setMetadata] = useState('{\n  "name": "",\n  "description": "",\n  "image": ""\n}');
   const [metadataUrl, setMetadataUrl] = useState('');
   const [uploading, setUploading] = useState(false);
-  const [registering, setRegistering] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Check if agent account exists
+  useEffect(() => {
+    async function checkAgentAccount() {
+      if (!publicKey || !connection) {
+        setPageMode('register');
+        return;
+      }
+
+      try {
+        setPageMode('loading');
+        const [agentPDA] = getAgentPDA(publicKey);
+        
+        console.log('Checking agent account:', agentPDA.toBase58());
+        
+        const accountInfo = await connection.getAccountInfo(agentPDA);
+        
+        if (accountInfo) {
+          // Account exists, fetch the data
+          if (program) {
+            try {
+              // @ts-ignore - Anchor types don't include account names from IDL
+              const account = await program.account.agentAccount.fetch(agentPDA);
+              console.log('Agent account found:', account);
+              setAgentAccount(account as AgentAccount);
+              setMetadataUrl(account.metadataUri);
+              
+              // Fetch metadata JSON from URL
+              try {
+                console.log('Fetching metadata from:', account.metadataUri);
+                const metadataResponse = await fetch(account.metadataUri);
+                if (metadataResponse.ok) {
+                  const metadataJson = await metadataResponse.json();
+                  setMetadata(JSON.stringify(metadataJson, null, 2));
+                  console.log('Metadata loaded:', metadataJson);
+                } else {
+                  console.warn('Failed to fetch metadata:', metadataResponse.status);
+                }
+              } catch (metadataErr) {
+                console.error('Error fetching metadata JSON:', metadataErr);
+                // Continue anyway, user can still update the URL
+              }
+              
+              setPageMode('update');
+            } catch (err) {
+              console.error('Error fetching agent account:', err);
+              setPageMode('register');
+            }
+          } else {
+            setPageMode('register');
+          }
+        } else {
+          console.log('Agent account does not exist');
+          setPageMode('register');
+        }
+      } catch (err) {
+        console.error('Error checking agent account:', err);
+        setPageMode('register');
+      }
+    }
+
+    checkAgentAccount();
+  }, [publicKey, connection, program]);
 
   const handleUpload = async () => {
     setError('');
@@ -64,7 +130,7 @@ export default function RegisterAgentPage() {
 
     setError('');
     setSuccess('');
-    setRegistering(true);
+    setUpdating(true);
 
     try {
       console.log('=== Starting Agent Registration ===');
@@ -92,9 +158,87 @@ export default function RegisterAgentPage() {
       
       setError(err instanceof Error ? err.message : 'Failed to register agent');
     } finally {
-      setRegistering(false);
+      setUpdating(false);
     }
   };
+
+  const handleUpdate = async () => {
+    if (!program || !publicKey) {
+      setError('Please connect your wallet');
+      return;
+    }
+
+    if (!metadataUrl) {
+      setError('Please provide a metadata URL');
+      return;
+    }
+
+    setError('');
+    setSuccess('');
+    setUpdating(true);
+
+    try {
+      console.log('=== Starting Agent Update ===');
+      console.log('Wallet:', publicKey.toBase58());
+      console.log('New Metadata URL:', metadataUrl);
+      
+      const signature = await updateAgent(program, publicKey, metadataUrl);
+      
+      console.log('✅ Update successful!');
+      console.log('Transaction signature:', signature);
+      
+      setSuccess(`Agent updated successfully! Transaction: ${signature}`);
+      
+      // Refresh agent account data
+      const [agentPDA] = getAgentPDA(publicKey);
+      // @ts-ignore - Anchor types don't include account names from IDL
+      const account = await program.account.agentAccount.fetch(agentPDA);
+      setAgentAccount(account as AgentAccount);
+      
+      // Fetch updated metadata JSON
+      try {
+        const metadataResponse = await fetch(metadataUrl);
+        if (metadataResponse.ok) {
+          const metadataJson = await metadataResponse.json();
+          setMetadata(JSON.stringify(metadataJson, null, 2));
+        }
+      } catch (metadataErr) {
+        console.error('Error fetching updated metadata:', metadataErr);
+      }
+    } catch (err: any) {
+      console.error('❌ Update error:', err);
+      console.error('Error name:', err.name);
+      console.error('Error message:', err.message);
+      console.error('Error code:', err.code);
+      console.error('Error logs:', err.logs);
+      
+      setError(err instanceof Error ? err.message : 'Failed to update agent');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  if (pageMode === 'loading') {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="pt-24 pb-16 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-4xl mx-auto">
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-center text-muted-foreground">Loading agent data...</p>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  const isUpdateMode = pageMode === 'update';
+  const actionText = isUpdateMode ? 'Update' : 'Register';
+  const actioningText = isUpdateMode ? 'Updating...' : 'Registering...';
+  const handleAction = isUpdateMode ? handleUpdate : handleRegister;
 
   return (
     <div className="min-h-screen bg-background">
@@ -103,9 +247,12 @@ export default function RegisterAgentPage() {
       <main className="pt-24 pb-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-2">Register Agent</h1>
+            <h1 className="text-4xl font-bold mb-2">{isUpdateMode ? 'My Agent' : 'Register Agent'}</h1>
             <p className="text-muted-foreground">
-              Register your wallet as an agent on the Trustless platform
+              {isUpdateMode 
+                ? 'Update your agent metadata on the Trustless platform'
+                : 'Register your wallet as an agent on the Trustless platform'
+              }
             </p>
           </div>
 
@@ -113,8 +260,34 @@ export default function RegisterAgentPage() {
             <Card className="mb-6 border-destructive">
               <CardContent className="pt-6">
                 <p className="text-destructive font-medium">
-                  Please connect your wallet to register an agent
+                  Please connect your wallet
                 </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {isUpdateMode && agentAccount && (
+            <Card className="mb-6 border-primary">
+              <CardHeader>
+                <CardTitle>Agent Status</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Status:</span>
+                  <span className={agentAccount.active ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                    {agentAccount.active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Average Rating:</span>
+                  <span className="font-medium">{agentAccount.avgRating.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Created:</span>
+                  <span className="font-mono text-xs">
+                    {new Date(agentAccount.createdAt * 1000).toLocaleDateString()}
+                  </span>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -124,7 +297,7 @@ export default function RegisterAgentPage() {
               <CardHeader>
                 <CardTitle>Agent Address</CardTitle>
                 <CardDescription>
-                  This wallet address will be registered as the agent
+                  {isUpdateMode ? 'Your registered agent address' : 'This wallet address will be registered as the agent'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -230,12 +403,12 @@ export default function RegisterAgentPage() {
             )}
 
             <Button
-              onClick={handleRegister}
-              disabled={registering || !metadataUrl || !publicKey}
+              onClick={handleAction}
+              disabled={updating || !metadataUrl || !publicKey}
               size="lg"
               className="w-full"
             >
-              {registering ? 'Registering...' : 'Register Agent'}
+              {updating ? actioningText : `${actionText} Agent`}
             </Button>
           </div>
         </div>

@@ -79,16 +79,18 @@ export function getTrustlessProgram(
 }
 
 /**
- * Fetch an agent account
+ * Fetch agent account data
  */
 export async function fetchAgentAccount(
   program: Program,
   agentPublicKey: PublicKey
 ): Promise<AgentAccount | null> {
+  const [agentPDA] = getAgentPDA(agentPublicKey);
+  
   try {
-    const [agentPDA] = getAgentPDA(agentPublicKey);
+    // @ts-ignore - Anchor types don't include account names from IDL
     const account = await program.account.agentAccount.fetch(agentPDA);
-    return account as unknown as AgentAccount;
+    return account as AgentAccount;
   } catch (error) {
     console.error('Error fetching agent account:', error);
     return null;
