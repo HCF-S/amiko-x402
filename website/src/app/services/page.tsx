@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import useSWR from 'swr';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -23,42 +24,25 @@ interface AgentService {
   };
 }
 
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
 export default function ServicesPage() {
   const searchParams = useSearchParams();
   const agentWalletParam = searchParams.get('agent_wallet');
 
-  const [services, setServices] = useState<AgentService[]>([]);
+  const { data, error, isLoading } = useSWR('/api/services', fetcher, {
+    refreshInterval: 30000, // Refresh every 30 seconds
+    revalidateOnFocus: true,
+  });
+
+  const services = data?.services || [];
   const [filteredServices, setFilteredServices] = useState<AgentService[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAgent, setSelectedAgent] = useState<string>(agentWalletParam || '');
 
   useEffect(() => {
-    fetchServices();
-  }, []);
-
-  useEffect(() => {
     filterServices();
   }, [services, searchQuery, selectedAgent]);
-
-  const fetchServices = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/services');
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch services');
-      }
-      
-      const data = await response.json();
-      setServices(data.services);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load services');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filterServices = () => {
     let filtered = [...services];
@@ -83,8 +67,8 @@ export default function ServicesPage() {
   };
 
   const uniqueAgents = Array.from(
-    new Map(services.map(s => [s.agent_wallet, s.agent])).values()
-  );
+    new Map(services.map((s: AgentService) => [s.agent_wallet, s.agent])).values()
+  ) as Array<{ wallet: string; name: string | null }>;
 
   const getMethodColor = (method: string | null) => {
     switch (method?.toUpperCase()) {
@@ -128,7 +112,7 @@ export default function ServicesPage() {
               className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">All Agents</option>
-              {uniqueAgents.map((agent) => (
+              {uniqueAgents.map((agent: { wallet: string; name: string | null }) => (
                 <option key={agent.wallet} value={agent.wallet}>
                   {agent.name || formatAddress(agent.wallet)}
                 </option>
@@ -154,7 +138,7 @@ export default function ServicesPage() {
           </div>
         </div>
 
-        {loading && (
+        {isLoading && (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
             <p className="mt-4 text-gray-600">Loading services...</p>
@@ -169,7 +153,7 @@ export default function ServicesPage() {
           </Card>
         )}
 
-        {!loading && !error && filteredServices.length === 0 && (
+        {!isLoading && !error && filteredServices.length === 0 && (
           <Card>
             <CardContent className="pt-6 text-center">
               <p className="text-gray-600">
@@ -181,7 +165,7 @@ export default function ServicesPage() {
           </Card>
         )}
 
-        {!loading && !error && filteredServices.length > 0 && (
+        {!isLoading && !error && filteredServices.length > 0 && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {filteredServices.map((service) => (
               <Card key={service.id} className="hover:shadow-lg transition-shadow">

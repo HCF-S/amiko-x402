@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import useSWR from 'swr';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -37,32 +37,15 @@ interface Agent {
   updated_at: string;
 }
 
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
 export default function AgentsPage() {
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, error, isLoading } = useSWR('/api/agents', fetcher, {
+    refreshInterval: 30000, // Refresh every 30 seconds
+    revalidateOnFocus: true,
+  });
 
-  useEffect(() => {
-    fetchAgents();
-  }, []);
-
-  const fetchAgents = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/agents');
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch agents');
-      }
-      
-      const data = await response.json();
-      setAgents(data.agents);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load agents');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const agents = data?.agents || [];
 
   const formatAddress = (address: string) => {
     return `${address.slice(0, 4)}...${address.slice(-4)}`;
@@ -86,7 +69,7 @@ export default function AgentsPage() {
           </p>
         </div>
 
-        {loading && (
+        {isLoading && (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
             <p className="mt-4 text-gray-600">Loading agents...</p>
@@ -101,7 +84,7 @@ export default function AgentsPage() {
           </Card>
         )}
 
-        {!loading && !error && agents.length === 0 && (
+        {!isLoading && !error && agents.length === 0 && (
           <Card>
             <CardContent className="pt-6 text-center">
               <p className="text-gray-600">No agents registered yet.</p>
@@ -109,9 +92,9 @@ export default function AgentsPage() {
           </Card>
         )}
 
-        {!loading && !error && agents.length > 0 && (
+        {!isLoading && !error && agents.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {agents.map((agent) => (
+            {agents.map((agent: Agent) => (
               <Card key={agent.wallet} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <div className="flex items-start justify-between">
