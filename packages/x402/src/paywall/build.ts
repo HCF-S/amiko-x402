@@ -96,8 +96,8 @@ export const PAYWALL_TEMPLATE = ${JSON.stringify(html)};
       // Write the template.ts file
       fs.writeFileSync(OUTPUT_TS, tsContent);
       console.log(`Generated template.ts with bundled HTML (${html.length} bytes)`);
-      fs.writeFileSync(OUTPUT_PY, pyContent);
-      console.log(`Generated template.py with bundled HTML (${html.length} bytes)`);
+      //fs.writeFileSync(OUTPUT_PY, pyContent);
+      //console.log(`Generated template.py with bundled HTML (${html.length} bytes)`);
     } else {
       throw new Error(`Bundled HTML file not found at ${OUTPUT_HTML}`);
     }

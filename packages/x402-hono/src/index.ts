@@ -222,6 +222,7 @@ export function paymentMiddleware(
             appName: paywall?.appName,
             appLogo: paywall?.appLogo,
             sessionTokenEndpoint: paywall?.sessionTokenEndpoint,
+            svmRpcUrl: paywall?.svmRpcUrl,
           });
         return c.html(html, 402);
       }

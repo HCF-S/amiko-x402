@@ -11,6 +11,7 @@ declare global {
       appName?: string;
       appLogo?: string;
       sessionTokenEndpoint?: string;
+      svmRpcUrl?: string;
       config: {
         chainConfig: Record<
           string,

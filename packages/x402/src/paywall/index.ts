@@ -11,6 +11,7 @@ interface PaywallOptions {
   appName?: string;
   appLogo?: string;
   sessionTokenEndpoint?: string;
+  svmRpcUrl?: string;
 }
 
 /**
@@ -52,6 +53,7 @@ export function getPaywallHtml({
   appName,
   appLogo,
   sessionTokenEndpoint,
+  svmRpcUrl,
 }: PaywallOptions): string {
   const logOnTestnet = testnet
     ? "console.log('Payment requirements initialized:', window.x402);"
@@ -72,6 +74,7 @@ export function getPaywallHtml({
       appName: "${escapeString(appName || "")}",
       appLogo: "${escapeString(appLogo || "")}",
       sessionTokenEndpoint: "${escapeString(sessionTokenEndpoint || "")}",
+      svmRpcUrl: "${escapeString(svmRpcUrl || "")}",
     };
     ${logOnTestnet}
   </script>`;
