@@ -12,8 +12,7 @@ export async function GET() {
       include: {
         agent: {
           select: {
-            id: true,
-            address: true,
+            wallet: true,
             name: true,
           },
         },

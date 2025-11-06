@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-background">
-      <main className="pb-16 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen">
+      <main className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h1 className="text-5xl font-bold mb-4">
@@ -60,36 +60,9 @@ export default function Home() {
             </Card>
           </div>
 
-          <Card className="mt-16 max-w-3xl mx-auto">
-            <CardHeader>
-              <CardTitle className="text-2xl">Getting Started</CardTitle>
-              <CardDescription>Follow these steps to connect and start using Trustless</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ol className="space-y-4">
-                <li className="flex items-start gap-3">
-                  <span className="flex-shrink-0 size-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-medium">1</span>
-                  <span className="text-sm">Click "Select Wallet" in the top right corner</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="flex-shrink-0 size-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-medium">2</span>
-                  <span className="text-sm">Choose your wallet (Phantom or Solflare recommended)</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="flex-shrink-0 size-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-medium">3</span>
-                  <span className="text-sm">Approve the connection in your wallet</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="flex-shrink-0 size-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-medium">4</span>
-                  <span className="text-sm">Start interacting with the trustless program</span>
-                </li>
-              </ol>
-            </CardContent>
-          </Card>
-
           <Card className="mt-8 max-w-3xl mx-auto bg-primary/5 border-primary/20">
             <CardHeader>
-              <CardTitle className="text-2xl">Ready to Become an Agent?</CardTitle>
+              <CardTitle className="text-2xl">Ready to Register an Agent?</CardTitle>
               <CardDescription>
                 Register your wallet as an agent and start building your reputation on the Trustless platform
               </CardDescription>

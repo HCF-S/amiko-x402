@@ -295,7 +295,8 @@ export default function MyAgentPage() {
         <main className="container mx-auto px-4 py-8">
           <div className="max-w-4xl mx-auto">
             <Card>
-              <CardContent className="pt-6">
+              <CardContent className="pt-6 text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
                 <p className="text-center text-muted-foreground">Loading agent data...</p>
               </CardContent>
             </Card>

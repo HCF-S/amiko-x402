@@ -25,8 +25,7 @@ const Badge = ({ children, variant = 'default', className = '' }: {
 };
 
 interface Agent {
-  id: string;
-  address: string;
+  wallet: string;
   name: string | null;
   description: string | null;
   metadata_uri: string | null;
@@ -81,7 +80,7 @@ export default function AgentsPage() {
     <div className="min-h-screen">
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Registered Agents</h1>
+          <h1 className="text-2xl font-bold mb-2">Registered Agents</h1>
           <p className="text-gray-600">
             Browse all agents registered on the Trustless protocol
           </p>
@@ -113,7 +112,7 @@ export default function AgentsPage() {
         {!loading && !error && agents.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {agents.map((agent) => (
-              <Card key={agent.id} className="hover:shadow-lg transition-shadow">
+              <Card key={agent.wallet} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -121,7 +120,7 @@ export default function AgentsPage() {
                         {agent.name || 'Unnamed Agent'}
                       </CardTitle>
                       <CardDescription className="mt-1">
-                        {formatAddress(agent.address)}
+                        {formatAddress(agent.wallet)}
                       </CardDescription>
                     </div>
                     <div className="flex flex-col gap-2">
@@ -171,7 +170,7 @@ export default function AgentsPage() {
                   </div>
 
                   <div className="mt-4 pt-4 border-t space-y-2">
-                    <Link href={`/services?agent_id=${agent.id}`}>
+                    <Link href={`/services?agent_wallet=${agent.wallet}`}>
                       <Button variant="outline" className="w-full text-sm">
                         View Services →
                       </Button>

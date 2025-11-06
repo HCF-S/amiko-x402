@@ -9,7 +9,7 @@ import { formatAssetAmount, getAssetInfo } from '@/lib/assets';
 
 interface AgentService {
   id: string;
-  agent_id: string;
+  agent_wallet: string;
   url: string;
   name: string | null;
   description: string | null;
@@ -18,22 +18,21 @@ interface AgentService {
   created_at: string;
   updated_at: string;
   agent: {
-    id: string;
-    address: string;
+    wallet: string;
     name: string | null;
   };
 }
 
 export default function ServicesPage() {
   const searchParams = useSearchParams();
-  const agentIdParam = searchParams.get('agent_id');
+  const agentWalletParam = searchParams.get('agent_wallet');
 
   const [services, setServices] = useState<AgentService[]>([]);
   const [filteredServices, setFilteredServices] = useState<AgentService[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedAgent, setSelectedAgent] = useState<string>(agentIdParam || '');
+  const [selectedAgent, setSelectedAgent] = useState<string>(agentWalletParam || '');
 
   useEffect(() => {
     fetchServices();
@@ -66,7 +65,7 @@ export default function ServicesPage() {
 
     // Filter by agent
     if (selectedAgent) {
-      filtered = filtered.filter(s => s.agent_id === selectedAgent);
+      filtered = filtered.filter(s => s.agent_wallet === selectedAgent);
     }
 
     // Filter by search query
@@ -84,7 +83,7 @@ export default function ServicesPage() {
   };
 
   const uniqueAgents = Array.from(
-    new Map(services.map(s => [s.agent_id, s.agent])).values()
+    new Map(services.map(s => [s.agent_wallet, s.agent])).values()
   );
 
   const getMethodColor = (method: string | null) => {
@@ -106,7 +105,7 @@ export default function ServicesPage() {
     <div className="min-h-screen">
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Agent Services</h1>
+          <h1 className="text-2xl font-bold mb-2">Agent Services</h1>
           <p className="text-gray-600">
             Browse all x402-enabled services provided by registered agents
           </p>
@@ -130,8 +129,8 @@ export default function ServicesPage() {
             >
               <option value="">All Agents</option>
               {uniqueAgents.map((agent) => (
-                <option key={agent.id} value={agent.id}>
-                  {agent.name || formatAddress(agent.address)}
+                <option key={agent.wallet} value={agent.wallet}>
+                  {agent.name || formatAddress(agent.wallet)}
                 </option>
               ))}
             </select>
@@ -194,16 +193,11 @@ export default function ServicesPage() {
                       </CardTitle>
                       <CardDescription className="mt-1 space-y-1">
                         <Link 
-                          href={`/agents?agent_id=${service.agent_id}`}
+                          href={`/agents?agent_wallet=${service.agent_wallet}`}
                           className="text-blue-600 hover:underline block"
                         >
-                          {service.agent.name || formatAddress(service.agent.address)}
+                          {service.agent.name || formatAddress(service.agent.wallet)}
                         </Link>
-                        {service.metadata?.accepts?.[0]?.network && (
-                          <div className="text-xs text-gray-500 capitalize">
-                            Network: {service.metadata.accepts[0].network}
-                          </div>
-                        )}
                       </CardDescription>
                     </div>
                     {service.method && (

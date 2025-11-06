@@ -10,8 +10,7 @@ export async function GET() {
         created_at: 'desc',
       },
       select: {
-        id: true,
-        address: true,
+        wallet: true,
         name: true,
         description: true,
         metadata_uri: true,
