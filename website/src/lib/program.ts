@@ -1,4 +1,4 @@
-import { Connection, PublicKey } from '@solana/web3.js';
+import { Connection, PublicKey, SystemProgram } from '@solana/web3.js';
 import { Program, AnchorProvider, Idl } from '@coral-xyz/anchor';
 import idl from './idl/trustless.json';
 
@@ -137,15 +137,51 @@ export async function registerAgent(
   agentPublicKey: PublicKey,
   metadataUri: string
 ) {
-  const [agentPDA] = getAgentPDA(agentPublicKey);
+  // Validate metadata URI length (max 200 characters as per Rust program)
+  if (metadataUri.length > 200) {
+    throw new Error(`Metadata URI too long: ${metadataUri.length} characters (max 200)`);
+  }
   
-  return await program.methods
-    .registerAgent(metadataUri)
-    .accounts({
-      agentAccount: agentPDA,
-      agent: agentPublicKey,
-    })
-    .rpc();
+  const [agentPDA, bump] = getAgentPDA(agentPublicKey);
+  
+  console.log('=== Register Agent Debug ===');
+  console.log('Program ID:', program.programId.toBase58());
+  console.log('Agent Public Key:', agentPublicKey.toBase58());
+  console.log('Agent PDA:', agentPDA.toBase58());
+  console.log('PDA Bump:', bump);
+  console.log('Metadata URI:', metadataUri);
+  console.log('Metadata URI length:', metadataUri.length, '/ 200');
+  console.log('System Program:', SystemProgram.programId.toBase58());
+  console.log('Accounts:', {
+    agentAccount: agentPDA.toBase58(),
+    agent: agentPublicKey.toBase58(),
+    systemProgram: SystemProgram.programId.toBase58(),
+  });
+  
+  console.log('Calling register_agent instruction...');
+  
+  try {
+    const tx = await program.methods
+      .registerAgent(metadataUri)
+      .accounts({
+        agentAccount: agentPDA,
+        agent: agentPublicKey,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
+    
+    console.log('✅ Transaction successful:', tx);
+    return tx;
+  } catch (error: any) {
+    console.error('❌ Transaction failed:', error);
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+      logs: error.logs,
+    });
+    throw error;
+  }
 }
 
 /**

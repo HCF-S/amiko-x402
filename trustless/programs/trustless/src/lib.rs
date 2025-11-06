@@ -265,12 +265,24 @@ pub struct FeedbackRecord {
 // Context Structures
 // ============================================================================
 
+// total space is 298 now, use 320
+// space = 8  // discriminator
+//         + 32   // agent: Pubkey
+//         + 4 + 200 // metadata_uri: String (4 bytes prefix + 200 bytes max)
+//         + 8    // created_at
+//         + 1    // active
+//         + 1    // auto_created
+//         + 16   // total_weighted_rating
+//         + 16   // total_weight
+//         + 4    // avg_rating
+//         + 8    // last_update
+
 #[derive(Accounts)]
 pub struct RegisterAgent<'info> {
     #[account(
         init,
         payer = agent,
-        space = 8 + std::mem::size_of::<AgentAccount>(),
+        space = 320,
         seeds = [b"agent", agent.key().as_ref()],
         bump
     )]

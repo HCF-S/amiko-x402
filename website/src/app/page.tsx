@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { Header } from "@/components/Header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
   return (
@@ -85,6 +87,22 @@ export default function Home() {
                   <span className="text-sm">Start interacting with the trustless program</span>
                 </li>
               </ol>
+            </CardContent>
+          </Card>
+
+          <Card className="mt-8 max-w-3xl mx-auto bg-primary/5 border-primary/20">
+            <CardHeader>
+              <CardTitle className="text-2xl">Ready to Become an Agent?</CardTitle>
+              <CardDescription>
+                Register your wallet as an agent and start building your reputation on the Trustless platform
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link href="/register-agent">
+                <Button size="lg" className="w-full">
+                  Register as Agent
+                </Button>
+              </Link>
             </CardContent>
           </Card>
         </div>
