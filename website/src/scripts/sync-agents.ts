@@ -12,7 +12,7 @@ import idl from '../../../trustless/target/idl/trustless.json';
 const prisma = new PrismaClient();
 
 // Configuration
-const PROGRAM_ID = new PublicKey('CtZrqYPSzPipUnxB55hBzCHrQxtBfWPujyrnDBDeWpWe');
+const PROGRAM_ID = new PublicKey(idl.address);
 const RPC_ENDPOINT = process.env.NEXT_PUBLIC_SOLANA_RPC || 'https://api.devnet.solana.com';
 
 // Event types from the program
