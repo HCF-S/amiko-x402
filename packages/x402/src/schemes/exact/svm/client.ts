@@ -193,12 +193,21 @@ async function createAtaAndTransferInstructions(
 
   // create the register_job instruction if trustless program ID is provided
   if (config?.svmConfig?.trustlessProgramId) {
+    // Calculate the transfer instruction index in the final transaction:
+    // Final transaction order:
+    // 0: SetComputeUnitLimit + SetComputeUnitPrice (combined into one instruction)
+    // 1+: Our instructions (ATA?, Transfer, RegisterJob)
+    //
+    // Transfer is the last instruction BEFORE RegisterJob
+    const computeBudgetInstructionCount = 1;
+    const transferInstructionIndex = computeBudgetInstructionCount + (instructions.length - 1);
+    
     const registerJobIx = await createRegisterJobInstruction(
       client,
       paymentRequirements,
       tokenProgramAddress,
       config.svmConfig.trustlessProgramId,
-      instructions.length - 1, // transfer instruction index
+      transferInstructionIndex,
     );
     instructions.push(registerJobIx);
   }
@@ -371,7 +380,7 @@ async function createRegisterJobInstruction(
   });
 
   // Instruction discriminator for register_job (Anchor uses first 8 bytes of sha256("global:register_job"))
-  const discriminator = Buffer.from([0x8e, 0x4c, 0x4f, 0x6a, 0x9f, 0x3e, 0x8b, 0x5d]);
+  const discriminator = Buffer.from([0x57, 0xd5, 0xb1, 0xff, 0x83, 0x11, 0xb2, 0x2d]);
 
   // Instruction data: discriminator + transfer_instruction_index (u8)
   const data = Buffer.concat([discriminator, Buffer.from([transferInstructionIndex])]);

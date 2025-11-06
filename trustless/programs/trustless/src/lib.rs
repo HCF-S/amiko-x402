@@ -101,14 +101,15 @@ pub mod trustless {
         // Verify it's a token program instruction (matches the token_program account)
         require!(
             transfer_ix.program_id == ctx.accounts.token_program.key(),
-            ErrorCode::InvalidTransferInstruction
+            ErrorCode::InvalidTransferProgramId
         );
         
-        // Parse SPL Token Transfer instruction (instruction discriminator = 3)
-        // Format: [discriminator: u8, amount: u64]
+        // Parse SPL Token Transfer instruction
+        // Discriminator 3 = Transfer, Discriminator 12 = TransferChecked
+        // Both have the same format: [discriminator: u8, amount: u64, ...]
         require!(
-            transfer_ix.data.len() >= 9 && transfer_ix.data[0] == 3,
-            ErrorCode::InvalidTransferInstruction
+            transfer_ix.data.len() >= 9 && (transfer_ix.data[0] == 3 || transfer_ix.data[0] == 12),
+            ErrorCode::InvalidTransferDiscriminator
         );
         
         // Extract transfer amount from instruction data
@@ -118,23 +119,45 @@ pub mod trustless {
         let payment_amount = u64::from_le_bytes(amount_bytes);
         
         // Verify the transfer instruction accounts match our expected accounts
-        // SPL Token Transfer accounts: [source, destination, authority]
-        require!(
-            transfer_ix.accounts.len() >= 3,
-            ErrorCode::InvalidTransferInstruction
-        );
-        require!(
-            transfer_ix.accounts[0].pubkey == client_token.key(),
-            ErrorCode::TransferSourceMismatch
-        );
-        require!(
-            transfer_ix.accounts[1].pubkey == agent_token.key(),
-            ErrorCode::TransferDestinationMismatch
-        );
-        require!(
-            transfer_ix.accounts[2].pubkey == ctx.accounts.client_wallet.key(),
-            ErrorCode::TransferAuthorityMismatch
-        );
+        // Transfer (discriminator 3): [source, destination, authority]
+        // TransferChecked (discriminator 12): [source, mint, destination, authority]
+        let is_transfer_checked = transfer_ix.data[0] == 12;
+        
+        if is_transfer_checked {
+            require!(
+                transfer_ix.accounts.len() >= 4,
+                ErrorCode::InvalidTransferAccounts
+            );
+            require!(
+                transfer_ix.accounts[0].pubkey == client_token.key(),
+                ErrorCode::TransferSourceMismatch
+            );
+            require!(
+                transfer_ix.accounts[2].pubkey == agent_token.key(),
+                ErrorCode::TransferDestinationMismatch
+            );
+            require!(
+                transfer_ix.accounts[3].pubkey == ctx.accounts.client_wallet.key(),
+                ErrorCode::TransferAuthorityMismatch
+            );
+        } else {
+            require!(
+                transfer_ix.accounts.len() >= 3,
+                ErrorCode::InvalidTransferAccounts
+            );
+            require!(
+                transfer_ix.accounts[0].pubkey == client_token.key(),
+                ErrorCode::TransferSourceMismatch
+            );
+            require!(
+                transfer_ix.accounts[1].pubkey == agent_token.key(),
+                ErrorCode::TransferDestinationMismatch
+            );
+            require!(
+                transfer_ix.accounts[2].pubkey == ctx.accounts.client_wallet.key(),
+                ErrorCode::TransferAuthorityMismatch
+            );
+        }
 
         // Lazy agent creation if account doesn't exist yet
         let agent_account_info = ctx.accounts.agent_account.to_account_info();
@@ -383,13 +406,13 @@ pub struct RegisterJob<'info> {
     pub job_record: Account<'info, JobRecord>,
     
     /// Agent account - can be either existing or newly created
-    /// Uses zero_copy pattern to avoid init/mut conflict
+    /// CHECK: Manually validated in instruction handler for lazy creation
     #[account(
         mut,
         seeds = [b"agent", agent_wallet.key().as_ref()],
         bump
     )]
-    pub agent_account: SystemAccount<'info>,
+    pub agent_account: UncheckedAccount<'info>,
     
     /// CHECK: Agent wallet address
     pub agent_wallet: UncheckedAccount<'info>,
@@ -531,6 +554,15 @@ pub enum ErrorCode {
     
     #[msg("Invalid transfer instruction")]
     InvalidTransferInstruction,
+    
+    #[msg("Transfer instruction program ID does not match token program")]
+    InvalidTransferProgramId,
+    
+    #[msg("Transfer instruction discriminator is invalid (expected SPL Token Transfer)")]
+    InvalidTransferDiscriminator,
+    
+    #[msg("Transfer instruction does not have enough accounts")]
+    InvalidTransferAccounts,
     
     #[msg("Invalid transfer amount format")]
     InvalidTransferAmount,
