@@ -435,6 +435,19 @@
       ]
     },
     {
+      "name": "AgentDeactivated",
+      "discriminator": [
+        138,
+        251,
+        82,
+        87,
+        119,
+        148,
+        20,
+        180
+      ]
+    },
+    {
       "name": "AgentRegistered",
       "discriminator": [
         191,
@@ -445,6 +458,19 @@
         100,
         189,
         85
+      ]
+    },
+    {
+      "name": "AgentUpdated",
+      "discriminator": [
+        210,
+        179,
+        162,
+        250,
+        123,
+        250,
+        210,
+        166
       ]
     },
     {
@@ -602,7 +628,35 @@
       }
     },
     {
+      "name": "AgentDeactivated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agent",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
       "name": "AgentRegistered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agent",
+            "type": "pubkey"
+          },
+          {
+            "name": "metadata_uri",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AgentUpdated",
       "type": {
         "kind": "struct",
         "fields": [

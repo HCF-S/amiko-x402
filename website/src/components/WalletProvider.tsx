@@ -10,7 +10,10 @@ import '@solana/wallet-adapter-react-ui/styles.css';
 
 export const SolanaWalletProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const network = WalletAdapterNetwork.Devnet;
-  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+  const endpoint = useMemo(() => {
+    // Use custom RPC endpoint if provided, otherwise fallback to default devnet
+    return process.env.NEXT_PUBLIC_SOLANA_RPC || clusterApiUrl(network);
+  }, [network]);
 
   const wallets = useMemo(
     () => [
