@@ -8,12 +8,15 @@ import { Button } from '@/components/ui/button';
 import { useTrustlessProgram } from '@/hooks/useTrustlessProgram';
 import { registerAgent } from '@/lib/program';
 
+type InputMode = 'url' | 'json';
+
 export default function RegisterAgentPage() {
   const { publicKey } = useWallet();
   const { program } = useTrustlessProgram();
   
+  const [inputMode, setInputMode] = useState<InputMode>('url');
   const [metadata, setMetadata] = useState('{\n  "name": "",\n  "description": "",\n  "image": ""\n}');
-  const [ipfsUrl, setIpfsUrl] = useState('');
+  const [metadataUrl, setMetadataUrl] = useState('');
   const [uploading, setUploading] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [error, setError] = useState('');
@@ -39,7 +42,7 @@ export default function RegisterAgentPage() {
         throw new Error(data.error || 'Upload failed');
       }
 
-      setIpfsUrl(data.ipfsUrl);
+      setMetadataUrl(data.ipfsUrl);
       setSuccess(`Uploaded to IPFS: ${data.ipfsHash}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to upload');
@@ -54,8 +57,8 @@ export default function RegisterAgentPage() {
       return;
     }
 
-    if (!ipfsUrl) {
-      setError('Please upload metadata first');
+    if (!metadataUrl) {
+      setError('Please provide a metadata URL');
       return;
     }
 
@@ -66,10 +69,10 @@ export default function RegisterAgentPage() {
     try {
       console.log('=== Starting Agent Registration ===');
       console.log('Wallet:', publicKey.toBase58());
-      console.log('IPFS URL:', ipfsUrl);
+      console.log('Metadata URL:', metadataUrl);
       console.log('Program:', program.programId.toBase58());
       
-      const signature = await registerAgent(program, publicKey, ipfsUrl);
+      const signature = await registerAgent(program, publicKey, metadataUrl);
       
       console.log('✅ Registration successful!');
       console.log('Transaction signature:', signature);
@@ -78,7 +81,7 @@ export default function RegisterAgentPage() {
       
       // Clear form
       setMetadata('{\n  "name": "",\n  "description": "",\n  "image": ""\n}');
-      setIpfsUrl('');
+      setMetadataUrl('');
     } catch (err: any) {
       console.error('❌ Registration error:', err);
       console.error('Error name:', err.name);
@@ -135,37 +138,75 @@ export default function RegisterAgentPage() {
               <CardHeader>
                 <CardTitle>Agent Metadata</CardTitle>
                 <CardDescription>
-                  Enter your agent metadata in JSON format
+                  Provide metadata URL or upload JSON to IPFS
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <textarea
-                  value={metadata}
-                  onChange={(e) => setMetadata(e.target.value)}
-                  className="w-full h-64 p-4 bg-muted rounded-lg font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder='{\n  "name": "My Agent",\n  "description": "Agent description",\n  "image": "https://..."\n}'
-                />
-                
-                <div className="flex gap-3">
-                  <Button
-                    onClick={handleUpload}
-                    disabled={uploading || !metadata.trim() || !publicKey}
-                    className="flex-1"
+                <div className="flex gap-2 p-1 bg-muted rounded-lg">
+                  <button
+                    onClick={() => setInputMode('url')}
+                    className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      inputMode === 'url'
+                        ? 'bg-background shadow-sm'
+                        : 'hover:bg-background/50'
+                    }`}
                   >
-                    {uploading ? 'Uploading...' : 'Upload to IPFS'}
-                  </Button>
+                    Paste URL
+                  </button>
+                  <button
+                    onClick={() => setInputMode('json')}
+                    className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      inputMode === 'json'
+                        ? 'bg-background shadow-sm'
+                        : 'hover:bg-background/50'
+                    }`}
+                  >
+                    Upload JSON
+                  </button>
                 </div>
 
-                {ipfsUrl && (
+                {inputMode === 'url' ? (
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={metadataUrl}
+                      onChange={(e) => setMetadataUrl(e.target.value)}
+                      placeholder="https://gateway.pinata.cloud/ipfs/..."
+                      className="w-full p-4 bg-muted rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Enter an existing IPFS URL or other metadata URL (max 200 characters)
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <textarea
+                      value={metadata}
+                      onChange={(e) => setMetadata(e.target.value)}
+                      className="w-full h-64 p-4 bg-muted rounded-lg font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                      placeholder='{\n  "name": "My Agent",\n  "description": "Agent description",\n  "image": "https://..."\n}'
+                    />
+                    
+                    <Button
+                      onClick={handleUpload}
+                      disabled={uploading || !metadata.trim() || !publicKey}
+                      className="w-full"
+                    >
+                      {uploading ? 'Uploading to IPFS...' : 'Upload to IPFS'}
+                    </Button>
+                  </div>
+                )}
+
+                {metadataUrl && (
                   <div className="p-4 bg-primary/10 rounded-lg">
-                    <p className="text-sm font-medium mb-2">IPFS URL:</p>
+                    <p className="text-sm font-medium mb-2">Metadata URL:</p>
                     <a
-                      href={ipfsUrl}
+                      href={metadataUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm text-primary hover:underline break-all"
                     >
-                      {ipfsUrl}
+                      {metadataUrl}
                     </a>
                   </div>
                 )}
@@ -190,7 +231,7 @@ export default function RegisterAgentPage() {
 
             <Button
               onClick={handleRegister}
-              disabled={registering || !ipfsUrl || !publicKey}
+              disabled={registering || !metadataUrl || !publicKey}
               size="lg"
               className="w-full"
             >
