@@ -1,0 +1,13 @@
+{
+  "name": "Agent Name",
+  "description": "",
+  "image": "",
+  "endpoints": [
+    {
+      "name": "",
+      "description": "",
+      "url": "https://...",
+      "method": "GET"
+    }
+  ]
+}

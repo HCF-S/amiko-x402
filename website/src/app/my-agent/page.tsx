@@ -14,15 +14,76 @@ export default function MyAgentPage() {
   const { publicKey } = useWallet();
   const { program, connection } = useTrustlessProgram();
   
+  const DEFAULT_METADATA = `{
+  "name": "Agent Name",
+  "description": "",
+  "image": "",
+  "endpoints": [
+    {
+      "name": "",
+      "description": "",
+      "url": "https://...",
+      "method": "GET"
+    }
+  ]
+}`;
+
   const [pageMode, setPageMode] = useState<PageMode>('loading');
   const [agentAccount, setAgentAccount] = useState<AgentAccount | null>(null);
   const [inputMode, setInputMode] = useState<InputMode>('url');
-  const [metadata, setMetadata] = useState('{\n  "name": "",\n  "description": "",\n  "image": ""\n}');
+  const [metadata, setMetadata] = useState(DEFAULT_METADATA);
+  const [originalMetadata, setOriginalMetadata] = useState(DEFAULT_METADATA);
   const [metadataUrl, setMetadataUrl] = useState('');
   const [uploading, setUploading] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Validate metadata format
+  const validateMetadata = (metadataString: string): { valid: boolean; error?: string } => {
+    try {
+      const parsed = JSON.parse(metadataString);
+      
+      // Check required fields
+      if (!parsed.name || typeof parsed.name !== 'string') {
+        return { valid: false, error: 'Missing or invalid "name" field' };
+      }
+      
+      if (typeof parsed.description !== 'string') {
+        return { valid: false, error: 'Missing or invalid "description" field' };
+      }
+      
+      // Check endpoints array
+      if (!Array.isArray(parsed.endpoints)) {
+        return { valid: false, error: 'Missing or invalid "endpoints" array' };
+      }
+      
+      // Validate each endpoint
+      for (let i = 0; i < parsed.endpoints.length; i++) {
+        const endpoint = parsed.endpoints[i];
+        
+        if (typeof endpoint.name !== 'string') {
+          return { valid: false, error: `Endpoint ${i + 1}: missing or invalid "name"` };
+        }
+        
+        if (typeof endpoint.description !== 'string') {
+          return { valid: false, error: `Endpoint ${i + 1}: missing or invalid "description"` };
+        }
+        
+        if (typeof endpoint.url !== 'string' || !endpoint.url.startsWith('http')) {
+          return { valid: false, error: `Endpoint ${i + 1}: invalid "url" (must start with http/https)` };
+        }
+        
+        if (typeof endpoint.method !== 'string' || !['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].includes(endpoint.method)) {
+          return { valid: false, error: `Endpoint ${i + 1}: invalid "method" (must be GET, POST, PUT, DELETE, or PATCH)` };
+        }
+      }
+      
+      return { valid: true };
+    } catch (err) {
+      return { valid: false, error: 'Invalid JSON format' };
+    }
+  };
 
   // Check if agent account exists
   useEffect(() => {
@@ -56,7 +117,9 @@ export default function MyAgentPage() {
                 const metadataResponse = await fetch(account.metadataUri);
                 if (metadataResponse.ok) {
                   const metadataJson = await metadataResponse.json();
-                  setMetadata(JSON.stringify(metadataJson, null, 2));
+                  const metadataString = JSON.stringify(metadataJson, null, 2);
+                  setMetadata(metadataString);
+                  setOriginalMetadata(metadataString);
                   console.log('Metadata loaded:', metadataJson);
                 } else {
                   console.warn('Failed to fetch metadata:', metadataResponse.status);
@@ -90,6 +153,14 @@ export default function MyAgentPage() {
   const handleUpload = async () => {
     setError('');
     setSuccess('');
+
+    // Validate metadata before uploading
+    const validation = validateMetadata(metadata);
+    if (!validation.valid) {
+      setError(`Validation error: ${validation.error}`);
+      return;
+    }
+
     setUploading(true);
 
     try {
@@ -108,6 +179,7 @@ export default function MyAgentPage() {
       }
 
       setMetadataUrl(data.ipfsUrl);
+      setOriginalMetadata(metadata); // Update original after successful upload
       setSuccess(`Uploaded to IPFS: ${data.ipfsHash}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to upload');
@@ -349,16 +421,32 @@ export default function MyAgentPage() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <textarea
-                      value={metadata}
-                      onChange={(e) => setMetadata(e.target.value)}
-                      className="w-full h-64 p-4 bg-muted rounded-lg font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
-                      placeholder='{\n  "name": "My Agent",\n  "description": "Agent description",\n  "image": "https://..."\n}'
-                    />
+                    <div className="relative">
+                      <textarea
+                        value={metadata}
+                        onChange={(e) => setMetadata(e.target.value)}
+                        className="w-full h-64 p-4 bg-muted rounded-lg font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                        placeholder='{\n  "name": "My Agent",\n  "description": "Agent description",\n  "image": "https://..."\n}'
+                      />
+                      {metadata && (() => {
+                        const validation = validateMetadata(metadata);
+                        return validation.valid ? (
+                          <div className="absolute top-2 right-2 text-green-500 text-xs flex items-center gap-1">
+                            <span>✓</span>
+                            <span>Valid</span>
+                          </div>
+                        ) : (
+                          <div className="absolute top-2 right-2 text-red-500 text-xs flex items-center gap-1">
+                            <span>✗</span>
+                            <span>Invalid</span>
+                          </div>
+                        );
+                      })()}
+                    </div>
                     
                     <Button
                       onClick={handleUpload}
-                      disabled={uploading || !metadata.trim() || !publicKey}
+                      disabled={uploading || !metadata.trim() || !publicKey || metadata === originalMetadata}
                       className="w-full"
                     >
                       {uploading ? 'Uploading to IPFS...' : 'Upload to IPFS'}

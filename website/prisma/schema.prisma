@@ -46,6 +46,8 @@ model AgentServices {
   agent_id  String
   service_url String
 
+  metadata Json?
+
   agent Agent @relation(fields: [agent_id], references: [id])
 
   created_at DateTime @default(now())
