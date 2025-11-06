@@ -13,7 +13,7 @@ pub mod trustless {
         let agent_account = &mut ctx.accounts.agent_account;
         let clock = Clock::get()?;
 
-        agent_account.agent = ctx.accounts.agent.key();
+        agent_account.wallet = ctx.accounts.signer.key();
         agent_account.metadata_uri = metadata_uri.clone();
         agent_account.created_at = clock.unix_timestamp;
         agent_account.active = true;
@@ -24,7 +24,7 @@ pub mod trustless {
         agent_account.last_update = clock.unix_timestamp;
 
         emit!(AgentRegistered {
-            agent: ctx.accounts.agent.key(),
+            wallet: ctx.accounts.signer.key(),
             metadata_uri,
         });
 
@@ -38,7 +38,7 @@ pub mod trustless {
         agent_account.last_update = Clock::get()?.unix_timestamp;
         
         emit!(AgentUpdated {
-            agent: agent_account.agent,
+            wallet: agent_account.wallet,
             metadata_uri,
         });
         
@@ -52,7 +52,7 @@ pub mod trustless {
         agent_account.last_update = Clock::get()?.unix_timestamp;
         
         emit!(AgentDeactivated {
-            agent: agent_account.agent,
+            wallet: agent_account.wallet,
         });
         
         Ok(())
@@ -68,7 +68,6 @@ pub mod trustless {
         // Get the job_record key before mutable borrow
         let job_record_key = ctx.accounts.job_record.key();
         
-        let agent_account = &mut ctx.accounts.agent_account;
         let job_record = &mut ctx.accounts.job_record;
         let clock = Clock::get()?;
 
@@ -84,11 +83,11 @@ pub mod trustless {
         
         // Verify token accounts belong to correct owners
         require!(
-            client_token.owner == ctx.accounts.client.key(),
+            client_token.owner == ctx.accounts.client_wallet.key(),
             ErrorCode::InvalidClientTokenAccount
         );
         require!(
-            agent_token.owner == ctx.accounts.agent.key(),
+            agent_token.owner == ctx.accounts.agent_wallet.key(),
             ErrorCode::InvalidAgentTokenAccount
         );
         
@@ -133,39 +132,66 @@ pub mod trustless {
             ErrorCode::TransferDestinationMismatch
         );
         require!(
-            transfer_ix.accounts[2].pubkey == ctx.accounts.client.key(),
+            transfer_ix.accounts[2].pubkey == ctx.accounts.client_wallet.key(),
             ErrorCode::TransferAuthorityMismatch
         );
 
-        // Lazy agent creation if account is being initialized
-        if agent_account.agent == Pubkey::default() {
-            agent_account.agent = ctx.accounts.agent.key();
-            agent_account.metadata_uri = String::new();
-            agent_account.created_at = clock.unix_timestamp;
-            agent_account.active = true;
-            agent_account.auto_created = true;
-            agent_account.total_weighted_rating = 0;
-            agent_account.total_weight = 0;
-            agent_account.avg_rating = 0.0;
-            agent_account.last_update = clock.unix_timestamp;
+        // Lazy agent creation if account doesn't exist yet
+        let agent_account_info = ctx.accounts.agent_account.to_account_info();
+        
+        if agent_account_info.data_is_empty() {
+            // Create the account
+            let space = 320;
+            let rent = Rent::get()?;
+            let lamports = rent.minimum_balance(space);
+            
+            anchor_lang::system_program::create_account(
+                CpiContext::new(
+                    ctx.accounts.system_program.to_account_info(),
+                    anchor_lang::system_program::CreateAccount {
+                        from: ctx.accounts.client_wallet.to_account_info(),
+                        to: agent_account_info.clone(),
+                    },
+                ),
+                lamports,
+                space as u64,
+                ctx.program_id,
+            )?;
+            
+            // Initialize agent account data
+            let agent_data = AgentAccount {
+                wallet: ctx.accounts.agent_wallet.key(),
+                metadata_uri: String::new(),
+                created_at: clock.unix_timestamp,
+                active: true,
+                auto_created: true,
+                total_weighted_rating: 0,
+                total_weight: 0,
+                avg_rating: 0.0,
+                last_update: clock.unix_timestamp,
+            };
+            
+            // Serialize and write data
+            let mut data = agent_account_info.try_borrow_mut_data()?;
+            agent_data.try_serialize(&mut &mut data[..])?;
 
             emit!(AgentAutoCreated {
-                agent: ctx.accounts.agent.key(),
+                wallet: ctx.accounts.agent_wallet.key(),
             });
         }
 
         // Create job record
         job_record.job_id = job_record_key;
-        job_record.client = ctx.accounts.client.key();
-        job_record.agent = ctx.accounts.agent.key();
+        job_record.client_wallet = ctx.accounts.client_wallet.key();
+        job_record.agent_wallet = ctx.accounts.agent_wallet.key();
         job_record.payment_tx = ctx.accounts.payment_tx.key();
         job_record.payment_amount = payment_amount;
         job_record.created_at = clock.unix_timestamp;
 
         emit!(JobRegistered {
             job_id: job_record.job_id,
-            agent: job_record.agent,
-            client: job_record.client,
+            agent_wallet: job_record.agent_wallet,
+            client_wallet: job_record.client_wallet,
             payment_amount,
         });
 
@@ -181,13 +207,12 @@ pub mod trustless {
         require!(rating >= 1 && rating <= 5, ErrorCode::InvalidRating);
 
         let job_record = &ctx.accounts.job_record;
-        let feedback_record = &mut ctx.accounts.feedback_record;
         let agent_account = &mut ctx.accounts.agent_account;
         let clock = Clock::get()?;
 
         // Validate client matches job record
         require!(
-            job_record.client == ctx.accounts.client.key(),
+            job_record.client_wallet == ctx.accounts.client_wallet.key(),
             ErrorCode::UnauthorizedClient
         );
 
@@ -197,10 +222,15 @@ pub mod trustless {
             ErrorCode::InvalidProofOfPayment
         );
 
+        // Get feedback_record key before mutable borrow
+        let feedback_record_key = ctx.accounts.feedback_record.key();
+        let feedback_record = &mut ctx.accounts.feedback_record;
+        
         // Create feedback record
+        feedback_record.feedback_id = feedback_record_key;
         feedback_record.job_id = job_record.job_id;
-        feedback_record.client = ctx.accounts.client.key();
-        feedback_record.agent = job_record.agent;
+        feedback_record.client_wallet = ctx.accounts.client_wallet.key();
+        feedback_record.agent_wallet = job_record.agent_wallet;
         feedback_record.rating = rating;
         feedback_record.comment_uri = comment_uri;
         feedback_record.proof_of_payment = ctx.accounts.proof_of_payment.key();
@@ -219,13 +249,14 @@ pub mod trustless {
 
         emit!(FeedbackSubmitted {
             job_id: job_record.job_id,
-            client: ctx.accounts.client.key(),
+            client_wallet: ctx.accounts.client_wallet.key(),
+            agent_wallet: job_record.agent_wallet,
             rating,
             payment_amount: job_record.payment_amount,
         });
 
         emit!(ReputationUpdated {
-            agent: agent_account.agent,
+            agent_wallet: agent_account.wallet,
             new_avg_rating: agent_account.avg_rating,
         });
 
@@ -239,7 +270,7 @@ pub mod trustless {
 
 #[account]
 pub struct AgentAccount {
-    pub agent: Pubkey,                   // 32
+    pub wallet: Pubkey,                  // 32
     pub metadata_uri: String,            // 4 + max 200 = 204
     pub created_at: i64,                 // 8
     pub active: bool,                    // 1
@@ -253,8 +284,8 @@ pub struct AgentAccount {
 #[account]
 pub struct JobRecord {
     pub job_id: Pubkey,                  // 32
-    pub client: Pubkey,                  // 32
-    pub agent: Pubkey,                   // 32
+    pub client_wallet: Pubkey,           // 32
+    pub agent_wallet: Pubkey,            // 32
     pub payment_tx: Pubkey,              // 32
     pub payment_amount: u64,             // 8
     pub created_at: i64,                 // 8
@@ -262,9 +293,10 @@ pub struct JobRecord {
 
 #[account]
 pub struct FeedbackRecord {
+    pub feedback_id: Pubkey,             // 32
     pub job_id: Pubkey,                  // 32
-    pub client: Pubkey,                  // 32
-    pub agent: Pubkey,                   // 32
+    pub client_wallet: Pubkey,           // 32
+    pub agent_wallet: Pubkey,            // 32
     pub rating: u8,                      // 1
     pub comment_uri: Option<String>,     // 1 + 4 + max 200 = 205
     pub proof_of_payment: Pubkey,        // 32
@@ -278,7 +310,7 @@ pub struct FeedbackRecord {
 
 // total space is 298 now, use 320
 // space = 8  // discriminator
-//         + 32   // agent: Pubkey
+//         + 32   // wallet: Pubkey
 //         + 4 + 200 // metadata_uri: String (4 bytes prefix + 200 bytes max)
 //         + 8    // created_at
 //         + 1    // active
@@ -292,15 +324,15 @@ pub struct FeedbackRecord {
 pub struct RegisterAgent<'info> {
     #[account(
         init,
-        payer = agent,
+        payer = signer,
         space = 320,
-        seeds = [b"agent", agent.key().as_ref()],
+        seeds = [b"agent", signer.key().as_ref()],
         bump
     )]
     pub agent_account: Account<'info, AgentAccount>,
     
     #[account(mut)]
-    pub agent: Signer<'info>,
+    pub signer: Signer<'info>,
     
     pub system_program: Program<'info, System>,
 }
@@ -309,42 +341,50 @@ pub struct RegisterAgent<'info> {
 pub struct UpdateAgent<'info> {
     #[account(
         mut,
-        seeds = [b"agent", agent.key().as_ref()],
+        seeds = [b"agent", signer.key().as_ref()],
         bump,
-        has_one = agent
+        has_one = wallet @ ErrorCode::UnauthorizedAgent
     )]
     pub agent_account: Account<'info, AgentAccount>,
     
-    pub agent: Signer<'info>,
+    #[account(constraint = wallet.key() == signer.key())]
+    pub signer: Signer<'info>,
+    
+    /// CHECK: Wallet address from agent_account
+    pub wallet: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct DeactivateAgent<'info> {
     #[account(
         mut,
-        seeds = [b"agent", agent.key().as_ref()],
+        seeds = [b"agent", signer.key().as_ref()],
         bump,
-        has_one = agent
+        has_one = wallet @ ErrorCode::UnauthorizedAgent
     )]
     pub agent_account: Account<'info, AgentAccount>,
     
-    pub agent: Signer<'info>,
+    #[account(constraint = wallet.key() == signer.key())]
+    pub signer: Signer<'info>,
+    
+    /// CHECK: Wallet address from agent_account
+    pub wallet: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct RegisterJob<'info> {
+    /// Agent account - can be either existing or newly created
+    /// Uses zero_copy pattern to avoid init/mut conflict
     #[account(
-        init,
-        payer = facilitator,
-        space = 8 + std::mem::size_of::<AgentAccount>(),
-        seeds = [b"agent", agent.key().as_ref()],
+        mut,
+        seeds = [b"agent", agent_wallet.key().as_ref()],
         bump
     )]
-    pub agent_account: Account<'info, AgentAccount>,
+    pub agent_account: SystemAccount<'info>,
     
     #[account(
         init,
-        payer = facilitator,
+        payer = client_wallet,
         space = 8 + std::mem::size_of::<JobRecord>(),
         seeds = [b"job", payment_tx.key().as_ref()],
         bump
@@ -352,20 +392,17 @@ pub struct RegisterJob<'info> {
     pub job_record: Account<'info, JobRecord>,
     
     /// CHECK: Agent wallet address
-    pub agent: UncheckedAccount<'info>,
-    
-    /// CHECK: Client wallet address
-    pub client: UncheckedAccount<'info>,
+    pub agent_wallet: UncheckedAccount<'info>,
     
     /// Client's USDC token account (sender)
     #[account(
-        constraint = client_token_account.owner == client.key() @ ErrorCode::InvalidClientTokenAccount
+        constraint = client_token_account.owner == client_wallet.key() @ ErrorCode::InvalidClientTokenAccount
     )]
     pub client_token_account: InterfaceAccount<'info, TokenAccount>,
     
     /// Agent's USDC token account (receiver)
     #[account(
-        constraint = agent_token_account.owner == agent.key() @ ErrorCode::InvalidAgentTokenAccount
+        constraint = agent_token_account.owner == agent_wallet.key() @ ErrorCode::InvalidAgentTokenAccount
     )]
     pub agent_token_account: InterfaceAccount<'info, TokenAccount>,
     
@@ -377,7 +414,7 @@ pub struct RegisterJob<'info> {
     pub instruction_sysvar: UncheckedAccount<'info>,
     
     #[account(mut)]
-    pub facilitator: Signer<'info>,
+    pub client_wallet: Signer<'info>,
     
     pub system_program: Program<'info, System>,
     pub token_program: Interface<'info, TokenInterface>,
@@ -393,22 +430,22 @@ pub struct SubmitFeedback<'info> {
     
     #[account(
         mut,
-        seeds = [b"agent", job_record.agent.as_ref()],
+        seeds = [b"agent", job_record.agent_wallet.as_ref()],
         bump
     )]
     pub agent_account: Account<'info, AgentAccount>,
     
     #[account(
         init,
-        payer = client,
-        space = 8 + std::mem::size_of::<FeedbackRecord>(),
+        payer = client_wallet,
+        space = 400,  // 8 (discriminator) + 32 (feedback_id) + 32 (job_id) + 32 (client) + 32 (agent) + 1 (rating) + 205 (comment_uri) + 32 (proof_of_payment) + 8 (payment_amount) + 8 (timestamp) = 390, use 400 for safety
         seeds = [b"feedback", job_record.job_id.as_ref()],
         bump
     )]
     pub feedback_record: Account<'info, FeedbackRecord>,
     
     #[account(mut)]
-    pub client: Signer<'info>,
+    pub client_wallet: Signer<'info>,
     
     /// CHECK: Payment transaction reference for validation
     pub proof_of_payment: UncheckedAccount<'info>,
@@ -422,45 +459,46 @@ pub struct SubmitFeedback<'info> {
 
 #[event]
 pub struct AgentRegistered {
-    pub agent: Pubkey,
+    pub wallet: Pubkey,
     pub metadata_uri: String,
 }
 
 #[event]
 pub struct AgentAutoCreated {
-    pub agent: Pubkey,
+    pub wallet: Pubkey,
 }
 
 #[event]
 pub struct AgentUpdated {
-    pub agent: Pubkey,
+    pub wallet: Pubkey,
     pub metadata_uri: String,
 }
 
 #[event]
 pub struct AgentDeactivated {
-    pub agent: Pubkey,
+    pub wallet: Pubkey,
 }
 
 #[event]
 pub struct JobRegistered {
     pub job_id: Pubkey,
-    pub agent: Pubkey,
-    pub client: Pubkey,
+    pub agent_wallet: Pubkey,
+    pub client_wallet: Pubkey,
     pub payment_amount: u64,
 }
 
 #[event]
 pub struct FeedbackSubmitted {
     pub job_id: Pubkey,
-    pub client: Pubkey,
+    pub client_wallet: Pubkey,
+    pub agent_wallet: Pubkey,
     pub rating: u8,
     pub payment_amount: u64,
 }
 
 #[event]
 pub struct ReputationUpdated {
-    pub agent: Pubkey,
+    pub agent_wallet: Pubkey,
     pub new_avg_rating: f32,
 }
 
@@ -475,6 +513,9 @@ pub enum ErrorCode {
     
     #[msg("Client does not match job record")]
     UnauthorizedClient,
+    
+    #[msg("Agent wallet does not match agent account")]
+    UnauthorizedAgent,
     
     #[msg("Proof of payment does not match job record")]
     InvalidProofOfPayment,
