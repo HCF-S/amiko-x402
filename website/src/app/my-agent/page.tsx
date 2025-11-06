@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { Header } from '@/components/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useTrustlessProgram } from '@/hooks/useTrustlessProgram';
@@ -220,9 +219,8 @@ export default function MyAgentPage() {
 
   if (pageMode === 'loading') {
     return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="pt-24 pb-16 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen">
+        <main className="container mx-auto px-4 py-8">
           <div className="max-w-4xl mx-auto">
             <Card>
               <CardContent className="pt-6">
@@ -241,11 +239,9 @@ export default function MyAgentPage() {
   const handleAction = isUpdateMode ? handleUpdate : handleRegister;
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
-      <main className="pt-24 pb-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen">
+      <main className="container mx-auto px-4 py-8">
+        <div className="max-w-5xl mx-auto">
           <div className="mb-8">
             <h1 className="text-4xl font-bold mb-2">{isUpdateMode ? 'My Agent' : 'Register Agent'}</h1>
             <p className="text-muted-foreground">

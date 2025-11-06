@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SolanaWalletProvider } from "@/components/WalletProvider";
+import { Header } from "@/components/Header";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,7 +30,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <SolanaWalletProvider>
-          {children}
+          <Header />
+          <div className="bg-gradient-to-b from-gray-50 to-white">
+            <div className="pt-16 max-w-7xl mx-auto">
+              {children}
+            </div>
+          </div>
         </SolanaWalletProvider>
       </body>
     </html>

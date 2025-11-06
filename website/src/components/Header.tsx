@@ -17,6 +17,9 @@ export const Header = () => {
             </Link>
             
             <nav className="hidden md:flex items-center gap-6">
+              <Link href="/agents" className="text-sm font-medium hover:text-primary transition-colors">
+                Agents
+              </Link>
               <Link href="/my-agent" className="text-sm font-medium hover:text-primary transition-colors">
                 My Agent
               </Link>
