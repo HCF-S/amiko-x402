@@ -7,6 +7,11 @@ export interface SvmConfig {
    * If not provided, defaults to public Solana RPC endpoints based on network.
    */
   rpcUrl?: string;
+  /**
+   * Trustless program ID for registering jobs on-chain.
+   * If provided, register_job instruction will be added to payment transactions.
+   */
+  trustlessProgramId?: string;
 }
 
 /**

@@ -178,8 +178,16 @@ export function SolanaPaywall({ paymentRequirement, onSuccessfulResponse }: Sola
       setStatus("Creating payment transaction...");
       const validPaymentRequirements = ensureValidAmount(paymentRequirement);
 
+      // Build config with svmRpcUrl and trustlessProgramId from window.x402
+      const config = {
+        svmConfig: {
+          rpcUrl: x402.svmRpcUrl,
+          trustlessProgramId: x402.trustlessProgramId,
+        },
+      };
+
       const createHeader = async (version: number) =>
-        exact.svm.createPaymentHeader(walletSigner, version, validPaymentRequirements);
+        exact.svm.createPaymentHeader(walletSigner, version, validPaymentRequirements, config);
 
       const paymentHeader = await createHeader(1);
 
@@ -203,6 +211,7 @@ export function SolanaPaywall({ paymentRequirement, onSuccessfulResponse }: Sola
             walletSigner,
             errorData.x402Version,
             validPaymentRequirements,
+            config,
           );
 
           const retryResponse = await fetch(x402.currentUrl, {

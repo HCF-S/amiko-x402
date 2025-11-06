@@ -25,6 +25,12 @@ import {
 } from "x402/types";
 import { useFacilitator } from "x402/verify";
 
+// Trustless program IDs for different networks
+const TRUSTLESS_PROGRAM_IDS = {
+  "solana": "CtZrqYPSzPipUnxB55hBzCHrQxtBfWPujyrnDBDeWpWe", // Mainnet
+  "solana-devnet": "CtZrqYPSzPipUnxB55hBzCHrQxtBfWPujyrnDBDeWpWe", // Devnet (same for now)
+} as const;
+
 /**
  * Creates a payment middleware factory for Hono
  *
@@ -209,6 +215,12 @@ export function paymentMiddleware(
         }
 
         const currentUrl = new URL(c.req.url).pathname + new URL(c.req.url).search;
+        
+        // Get trustless program ID based on network (for Solana networks)
+        const trustlessProgramId = SupportedSVMNetworks.includes(network)
+          ? TRUSTLESS_PROGRAM_IDS[network as keyof typeof TRUSTLESS_PROGRAM_IDS]
+          : undefined;
+        
         const html =
           customPaywallHtml ??
           getPaywallHtml({
@@ -223,6 +235,7 @@ export function paymentMiddleware(
             appLogo: paywall?.appLogo,
             sessionTokenEndpoint: paywall?.sessionTokenEndpoint,
             svmRpcUrl: paywall?.svmRpcUrl,
+            trustlessProgramId,
           });
         return c.html(html, 402);
       }

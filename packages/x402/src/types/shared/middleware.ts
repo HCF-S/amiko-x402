@@ -15,6 +15,7 @@ export type PaywallConfig = {
   appName?: string;
   appLogo?: string;
   sessionTokenEndpoint?: string;
+  svmRpcUrl?: string;
 };
 
 export type PaymentMiddlewareConfig = {

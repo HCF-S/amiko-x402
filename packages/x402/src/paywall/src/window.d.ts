@@ -12,6 +12,7 @@ declare global {
       appLogo?: string;
       sessionTokenEndpoint?: string;
       svmRpcUrl?: string;
+      trustlessProgramId?: string;
       config: {
         chainConfig: Record<
           string,

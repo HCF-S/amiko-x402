@@ -58,7 +58,7 @@ pub mod trustless {
         Ok(())
     }
 
-    /// Register a job (called by x402 facilitator)
+    /// Register a job (called by x402 client)
     /// Supports lazy agent creation
     /// Verifies USDC payment from client to agent by checking transaction instructions
     pub fn register_job(
