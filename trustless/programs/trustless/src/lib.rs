@@ -34,8 +34,14 @@ pub mod trustless {
     /// Update agent metadata
     pub fn update_agent(ctx: Context<UpdateAgent>, metadata_uri: String) -> Result<()> {
         let agent_account = &mut ctx.accounts.agent_account;
-        agent_account.metadata_uri = metadata_uri;
+        agent_account.metadata_uri = metadata_uri.clone();
         agent_account.last_update = Clock::get()?.unix_timestamp;
+        
+        emit!(AgentUpdated {
+            agent: agent_account.agent,
+            metadata_uri,
+        });
+        
         Ok(())
     }
 
@@ -44,6 +50,11 @@ pub mod trustless {
         let agent_account = &mut ctx.accounts.agent_account;
         agent_account.active = false;
         agent_account.last_update = Clock::get()?.unix_timestamp;
+        
+        emit!(AgentDeactivated {
+            agent: agent_account.agent,
+        });
+        
         Ok(())
     }
 
@@ -417,6 +428,17 @@ pub struct AgentRegistered {
 
 #[event]
 pub struct AgentAutoCreated {
+    pub agent: Pubkey,
+}
+
+#[event]
+pub struct AgentUpdated {
+    pub agent: Pubkey,
+    pub metadata_uri: String,
+}
+
+#[event]
+pub struct AgentDeactivated {
     pub agent: Pubkey,
 }
 
