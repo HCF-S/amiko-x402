@@ -15,8 +15,7 @@ datasource db {
 }
 
 model Agent {
-  id        String @id @default(cuid())
-  address   String @unique
+  wallet    String @id @unique // Wallet pubkey
   name      String?
   description String?
 
@@ -32,7 +31,9 @@ model Agent {
   avg_rating Float @default(0)                                   // f32
   last_update DateTime?
 
-  agentServices AgentServices[]
+  services AgentServices[]
+  jobs          JobRecord[]
+  feedbacks     FeedbackRecord[]
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -43,7 +44,7 @@ model Agent {
 
 model AgentServices {
   id          String @id @default(cuid())
-  agent_id    String
+  agent_wallet String
   url         String
 
   name        String?
@@ -52,12 +53,51 @@ model AgentServices {
   
   metadata    Json?    // x402 API response
 
-  agent Agent @relation(fields: [agent_id], references: [id])
+  agent Agent @relation(fields: [agent_wallet], references: [wallet])
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  @@unique([agent_id, url])
+  @@unique([agent_wallet, url])
   @@map("agent_services")
+  @@schema("x402")
+}
+
+model JobRecord {
+  id               String @id        // Pubkey from chain (PDA)
+  client_wallet    String            // Client wallet pubkey
+  agent_wallet     String            // Agent wallet pubkey
+  payment_tx       String            // Pubkey (proof_of_payment)
+  payment_amount   Decimal @db.Decimal(20, 0)  // u64
+  created_at_chain DateTime         // i64 timestamp from chain
+  
+  agent            Agent @relation(fields: [agent_wallet], references: [wallet])
+  feedback         FeedbackRecord?  // One-to-one: one job can have at most one feedback
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("job_records")
+  @@schema("x402")
+}
+
+model FeedbackRecord {
+  id                String @id      // Pubkey from chain (PDA)
+  job_id            String @unique  // One-to-one: unique job_id ensures one feedback per job
+  client_wallet     String          // Client wallet pubkey
+  agent_wallet      String          // Agent wallet pubkey
+  rating            Int             // u8
+  comment_uri       String?         // Optional<String>
+  proof_of_payment  String          // Pubkey
+  payment_amount    Decimal @db.Decimal(20, 0)  // u64
+  timestamp         DateTime        // i64 timestamp from chain
+  
+  job               JobRecord @relation(fields: [job_id], references: [id])
+  agent             Agent @relation(fields: [agent_wallet], references: [wallet])
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("feedback_records")
   @@schema("x402")
 }

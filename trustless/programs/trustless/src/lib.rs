@@ -373,15 +373,6 @@ pub struct DeactivateAgent<'info> {
 
 #[derive(Accounts)]
 pub struct RegisterJob<'info> {
-    /// Agent account - can be either existing or newly created
-    /// Uses zero_copy pattern to avoid init/mut conflict
-    #[account(
-        mut,
-        seeds = [b"agent", agent_wallet.key().as_ref()],
-        bump
-    )]
-    pub agent_account: SystemAccount<'info>,
-    
     #[account(
         init,
         payer = client_wallet,
@@ -390,6 +381,15 @@ pub struct RegisterJob<'info> {
         bump
     )]
     pub job_record: Account<'info, JobRecord>,
+    
+    /// Agent account - can be either existing or newly created
+    /// Uses zero_copy pattern to avoid init/mut conflict
+    #[account(
+        mut,
+        seeds = [b"agent", agent_wallet.key().as_ref()],
+        bump
+    )]
+    pub agent_account: SystemAccount<'info>,
     
     /// CHECK: Agent wallet address
     pub agent_wallet: UncheckedAccount<'info>,
@@ -423,6 +423,15 @@ pub struct RegisterJob<'info> {
 #[derive(Accounts)]
 pub struct SubmitFeedback<'info> {
     #[account(
+        init,
+        payer = client_wallet,
+        space = 400,  // 8 (discriminator) + 32 (feedback_id) + 32 (job_id) + 32 (client) + 32 (agent) + 1 (rating) + 205 (comment_uri) + 32 (proof_of_payment) + 8 (payment_amount) + 8 (timestamp) = 390, use 400 for safety
+        seeds = [b"feedback", job_record.job_id.as_ref()],
+        bump
+    )]
+    pub feedback_record: Account<'info, FeedbackRecord>,
+    
+    #[account(
         seeds = [b"job", proof_of_payment.key().as_ref()],
         bump
     )]
@@ -434,15 +443,6 @@ pub struct SubmitFeedback<'info> {
         bump
     )]
     pub agent_account: Account<'info, AgentAccount>,
-    
-    #[account(
-        init,
-        payer = client_wallet,
-        space = 400,  // 8 (discriminator) + 32 (feedback_id) + 32 (job_id) + 32 (client) + 32 (agent) + 1 (rating) + 205 (comment_uri) + 32 (proof_of_payment) + 8 (payment_amount) + 8 (timestamp) = 390, use 400 for safety
-        seeds = [b"feedback", job_record.job_id.as_ref()],
-        bump
-    )]
-    pub feedback_record: Account<'info, FeedbackRecord>,
     
     #[account(mut)]
     pub client_wallet: Signer<'info>,

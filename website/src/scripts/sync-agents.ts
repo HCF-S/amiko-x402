@@ -7,7 +7,7 @@
 import { Connection, PublicKey } from '@solana/web3.js';
 import { Program, AnchorProvider, Wallet, BN } from '@coral-xyz/anchor';
 import { PrismaClient } from '@prisma/client';
-import idl from '../../../trustless/target/idl/trustless.json';
+import idl from '../lib/idl/trustless.json';
 import { getAgentPDA } from '../lib/program';
 
 const prisma = new PrismaClient();
@@ -144,7 +144,7 @@ async function fetchX402Info(url: string): Promise<any | null> {
 /**
  * Sync agent endpoints from metadata
  */
-async function syncAgentEndpoints(agentId: string, metadataJson: any) {
+async function syncAgentEndpoints(agentWallet: string, metadataJson: any) {
   if (!metadataJson?.endpoints || !Array.isArray(metadataJson.endpoints)) {
     console.log(`  ℹ️  No endpoints in metadata`);
     return;
@@ -170,13 +170,13 @@ async function syncAgentEndpoints(agentId: string, metadataJson: any) {
       // Upsert agent service
       await prisma.agentServices.upsert({
         where: {
-          agent_id_url: {
-            agent_id: agentId,
+          agent_wallet_url: {
+            agent_wallet: agentWallet,
             url: endpoint.url,
           },
         },
         create: {
-          agent_id: agentId,
+          agent_wallet: agentWallet,
           url: endpoint.url,
           name: endpoint.name || null,
           description: endpoint.description || null,
@@ -203,8 +203,8 @@ async function syncAgentEndpoints(agentId: string, metadataJson: any) {
  * Fetch agent account and sync to database
  */
 async function syncAgentAccount(program: Program, agentPubkey: PublicKey) {
-  const address = agentPubkey.toBase58();
-  console.log(`🔍 Fetching agent account: ${address}`);
+  const walletAddress = agentPubkey.toBase58();
+  console.log(`🔍 Fetching agent account: ${walletAddress}`);
 
   try {
     const [agentPDA] = getAgentPDA(agentPubkey);
@@ -213,7 +213,7 @@ async function syncAgentAccount(program: Program, agentPubkey: PublicKey) {
     const accountData = await program.account.agentAccount.fetch(agentPDA);
     
     if (!accountData) {
-      console.log(`⚠️  Agent account not found: ${address}`);
+      console.log(`⚠️  Agent account not found: ${walletAddress}`);
       return;
     }
 
@@ -225,11 +225,14 @@ async function syncAgentAccount(program: Program, agentPubkey: PublicKey) {
       metadataJson = await fetchMetadata(accountData.metadataUri);
     }
 
+    // Get wallet address from account data
+    const wallet = accountData.wallet.toBase58();
+
     // Upsert agent in database
     const agent = await prisma.agent.upsert({
-      where: { address },
+      where: { wallet },
       create: {
-        address,
+        wallet,
         metadata_uri: accountData.metadataUri || null,
         metadata_json: metadataJson,
         name: metadataJson?.name,
@@ -255,14 +258,14 @@ async function syncAgentAccount(program: Program, agentPubkey: PublicKey) {
       },
     });
 
-    console.log(`✅ Agent synced to database: ${address}`);
+    console.log(`✅ Agent synced to database: ${wallet}`);
 
     // Sync endpoints from metadata
     if (metadataJson) {
-      await syncAgentEndpoints(agent.id, metadataJson);
+      await syncAgentEndpoints(wallet, metadataJson);
     }
   } catch (error) {
-    console.error(`❌ Error syncing agent account:`, error);
+    console.error(`❌ Error syncing agent ${walletAddress}:`, error);
   }
 }
 

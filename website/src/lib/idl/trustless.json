@@ -40,14 +40,17 @@
               },
               {
                 "kind": "account",
-                "path": "agent"
+                "path": "signer"
               }
             ]
           }
         },
         {
-          "name": "agent",
-          "signer": true,
+          "name": "signer",
+          "signer": true
+        },
+        {
+          "name": "wallet",
           "relations": [
             "agent_account"
           ]
@@ -88,13 +91,13 @@
               },
               {
                 "kind": "account",
-                "path": "agent"
+                "path": "signer"
               }
             ]
           }
         },
         {
-          "name": "agent",
+          "name": "signer",
           "writable": true,
           "signer": true
         },
@@ -129,28 +132,6 @@
       ],
       "accounts": [
         {
-          "name": "agent_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  103,
-                  101,
-                  110,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "agent"
-              }
-            ]
-          }
-        },
-        {
           "name": "job_record",
           "writable": true,
           "pda": {
@@ -171,10 +152,33 @@
           }
         },
         {
-          "name": "agent"
+          "name": "agent_account",
+          "docs": [
+            "Agent account - can be either existing or newly created",
+            "Uses zero_copy pattern to avoid init/mut conflict"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent_wallet"
+              }
+            ]
+          }
         },
         {
-          "name": "client"
+          "name": "agent_wallet"
         },
         {
           "name": "client_token_account",
@@ -196,7 +200,7 @@
           "address": "Sysvar1nstructions1111111111111111111111111"
         },
         {
-          "name": "facilitator",
+          "name": "client_wallet",
           "writable": true,
           "signer": true
         },
@@ -231,6 +235,32 @@
         188
       ],
       "accounts": [
+        {
+          "name": "feedback_record",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  101,
+                  101,
+                  100,
+                  98,
+                  97,
+                  99,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "job_record.job_id",
+                "account": "JobRecord"
+              }
+            ]
+          }
+        },
         {
           "name": "job_record",
           "pda": {
@@ -267,40 +297,14 @@
               },
               {
                 "kind": "account",
-                "path": "job_record.agent",
+                "path": "job_record.agent_wallet",
                 "account": "JobRecord"
               }
             ]
           }
         },
         {
-          "name": "feedback_record",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  102,
-                  101,
-                  101,
-                  100,
-                  98,
-                  97,
-                  99,
-                  107
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "job_record.job_id",
-                "account": "JobRecord"
-              }
-            ]
-          }
-        },
-        {
-          "name": "client",
+          "name": "client_wallet",
           "writable": true,
           "signer": true
         },
@@ -358,14 +362,17 @@
               },
               {
                 "kind": "account",
-                "path": "agent"
+                "path": "signer"
               }
             ]
           }
         },
         {
-          "name": "agent",
-          "signer": true,
+          "name": "signer",
+          "signer": true
+        },
+        {
+          "name": "wallet",
           "relations": [
             "agent_account"
           ]
@@ -526,46 +533,51 @@
     },
     {
       "code": 6002,
+      "name": "UnauthorizedAgent",
+      "msg": "Agent wallet does not match agent account"
+    },
+    {
+      "code": 6003,
       "name": "InvalidProofOfPayment",
       "msg": "Proof of payment does not match job record"
     },
     {
-      "code": 6003,
+      "code": 6004,
       "name": "TokenMintMismatch",
       "msg": "Token mint mismatch between client and agent accounts"
     },
     {
-      "code": 6004,
+      "code": 6005,
       "name": "InvalidClientTokenAccount",
       "msg": "Client token account owner does not match client"
     },
     {
-      "code": 6005,
+      "code": 6006,
       "name": "InvalidAgentTokenAccount",
       "msg": "Agent token account owner does not match agent"
     },
     {
-      "code": 6006,
+      "code": 6007,
       "name": "InvalidTransferInstruction",
       "msg": "Invalid transfer instruction"
     },
     {
-      "code": 6007,
+      "code": 6008,
       "name": "InvalidTransferAmount",
       "msg": "Invalid transfer amount format"
     },
     {
-      "code": 6008,
+      "code": 6009,
       "name": "TransferSourceMismatch",
       "msg": "Transfer source account mismatch"
     },
     {
-      "code": 6009,
+      "code": 6010,
       "name": "TransferDestinationMismatch",
       "msg": "Transfer destination account mismatch"
     },
     {
-      "code": 6010,
+      "code": 6011,
       "name": "TransferAuthorityMismatch",
       "msg": "Transfer authority mismatch"
     }
@@ -577,7 +589,7 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "agent",
+            "name": "wallet",
             "type": "pubkey"
           },
           {
@@ -621,7 +633,7 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "agent",
+            "name": "wallet",
             "type": "pubkey"
           }
         ]
@@ -633,7 +645,7 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "agent",
+            "name": "wallet",
             "type": "pubkey"
           }
         ]
@@ -645,7 +657,7 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "agent",
+            "name": "wallet",
             "type": "pubkey"
           },
           {
@@ -661,7 +673,7 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "agent",
+            "name": "wallet",
             "type": "pubkey"
           },
           {
@@ -677,15 +689,19 @@
         "kind": "struct",
         "fields": [
           {
+            "name": "feedback_id",
+            "type": "pubkey"
+          },
+          {
             "name": "job_id",
             "type": "pubkey"
           },
           {
-            "name": "client",
+            "name": "client_wallet",
             "type": "pubkey"
           },
           {
-            "name": "agent",
+            "name": "agent_wallet",
             "type": "pubkey"
           },
           {
@@ -723,7 +739,11 @@
             "type": "pubkey"
           },
           {
-            "name": "client",
+            "name": "client_wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "agent_wallet",
             "type": "pubkey"
           },
           {
@@ -747,11 +767,11 @@
             "type": "pubkey"
           },
           {
-            "name": "client",
+            "name": "client_wallet",
             "type": "pubkey"
           },
           {
-            "name": "agent",
+            "name": "agent_wallet",
             "type": "pubkey"
           },
           {
@@ -779,11 +799,11 @@
             "type": "pubkey"
           },
           {
-            "name": "agent",
+            "name": "agent_wallet",
             "type": "pubkey"
           },
           {
-            "name": "client",
+            "name": "client_wallet",
             "type": "pubkey"
           },
           {
@@ -799,7 +819,7 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "agent",
+            "name": "agent_wallet",
             "type": "pubkey"
           },
           {
