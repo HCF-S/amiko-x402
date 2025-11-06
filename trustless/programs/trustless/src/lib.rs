@@ -1,10 +1,6 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::{
-    instruction::Instruction,
-    program::invoke,
-    sysvar::instructions::{load_instruction_at_checked, ID as INSTRUCTIONS_ID},
-};
-use anchor_spl::token::{Token, TokenAccount, Transfer};
+use anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked;
+use anchor_spl::token_interface::{TokenAccount, TokenInterface};
 
 declare_id!("CtZrqYPSzPipUnxB55hBzCHrQxtBfWPujyrnDBDeWpWe");
 
@@ -58,6 +54,9 @@ pub mod trustless {
         ctx: Context<RegisterJob>,
         transfer_instruction_index: u8,
     ) -> Result<()> {
+        // Get the job_record key before mutable borrow
+        let job_record_key = ctx.accounts.job_record.key();
+        
         let agent_account = &mut ctx.accounts.agent_account;
         let job_record = &mut ctx.accounts.job_record;
         let clock = Clock::get()?;
@@ -89,9 +88,9 @@ pub mod trustless {
             &ixs,
         )?;
         
-        // Verify it's a token program instruction
+        // Verify it's a token program instruction (matches the token_program account)
         require!(
-            transfer_ix.program_id == anchor_spl::token::ID,
+            transfer_ix.program_id == ctx.accounts.token_program.key(),
             ErrorCode::InvalidTransferInstruction
         );
         
@@ -145,7 +144,7 @@ pub mod trustless {
         }
 
         // Create job record
-        job_record.job_id = ctx.accounts.job_record.key();
+        job_record.job_id = job_record_key;
         job_record.client = ctx.accounts.client.key();
         job_record.agent = ctx.accounts.agent.key();
         job_record.payment_tx = ctx.accounts.payment_tx.key();
@@ -312,7 +311,7 @@ pub struct DeactivateAgent<'info> {
 #[derive(Accounts)]
 pub struct RegisterJob<'info> {
     #[account(
-        init_if_needed,
+        init,
         payer = facilitator,
         space = 8 + std::mem::size_of::<AgentAccount>(),
         seeds = [b"agent", agent.key().as_ref()],
@@ -339,13 +338,13 @@ pub struct RegisterJob<'info> {
     #[account(
         constraint = client_token_account.owner == client.key() @ ErrorCode::InvalidClientTokenAccount
     )]
-    pub client_token_account: Account<'info, TokenAccount>,
+    pub client_token_account: InterfaceAccount<'info, TokenAccount>,
     
     /// Agent's USDC token account (receiver)
     #[account(
         constraint = agent_token_account.owner == agent.key() @ ErrorCode::InvalidAgentTokenAccount
     )]
-    pub agent_token_account: Account<'info, TokenAccount>,
+    pub agent_token_account: InterfaceAccount<'info, TokenAccount>,
     
     /// CHECK: Payment transaction reference (used as job identifier)
     pub payment_tx: UncheckedAccount<'info>,
@@ -358,7 +357,7 @@ pub struct RegisterJob<'info> {
     pub facilitator: Signer<'info>,
     
     pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
+    pub token_program: Interface<'info, TokenInterface>,
 }
 
 #[derive(Accounts)]
