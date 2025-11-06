@@ -106,6 +106,7 @@ export async function fetchJobRecord(
 ): Promise<JobRecord | null> {
   try {
     const [jobPDA] = getJobPDA(paymentTx);
+    // @ts-ignore - Anchor types don't include account names from IDL
     const account = await program.account.jobRecord.fetch(jobPDA);
     return account as unknown as JobRecord;
   } catch (error) {
@@ -123,6 +124,7 @@ export async function fetchFeedbackRecord(
 ): Promise<FeedbackRecord | null> {
   try {
     const [feedbackPDA] = getFeedbackPDA(jobId);
+    // @ts-ignore - Anchor types don't include account names from IDL
     const account = await program.account.feedbackRecord.fetch(feedbackPDA);
     return account as unknown as FeedbackRecord;
   } catch (error) {

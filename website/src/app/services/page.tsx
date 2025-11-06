@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,7 +26,7 @@ interface AgentService {
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-export default function ServicesPage() {
+function ServicesContent() {
   const searchParams = useSearchParams();
   const agentWalletParam = searchParams.get('agent_wallet');
 
@@ -254,5 +254,22 @@ export default function ServicesPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function ServicesPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen">
+        <main className="container mx-auto px-4 py-8">
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            <p className="mt-4 text-gray-600">Loading services...</p>
+          </div>
+        </main>
+      </div>
+    }>
+      <ServicesContent />
+    </Suspense>
   );
 }
