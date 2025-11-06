@@ -1,0 +1,56 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["x402"]
+}
+
+model Agent {
+  id        String @id @default(cuid())
+  address   String @unique
+  name      String?
+  description String?
+
+  // On-chain data
+  metadata_uri String?
+  metadata_json Json?
+  active Boolean @default(true)
+  auto_created Boolean @default(false)
+  
+  // Reputation tracking
+  total_weighted_rating Decimal @default(0) @db.Decimal(39, 0)  // u128 equivalent
+  total_weight Decimal @default(0) @db.Decimal(39, 0)           // u128 equivalent
+  avg_rating Float @default(0)                                   // f32
+  last_update DateTime?
+
+  agentServices AgentServices[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("agents")
+  @@schema("x402")
+}
+
+model AgentServices {
+  id        String @id @default(cuid())
+  agent_id  String
+  service_url String
+
+  agent Agent @relation(fields: [agent_id], references: [id])
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("agent_services")
+  @@schema("x402")
+}
