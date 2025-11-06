@@ -42,17 +42,22 @@ model Agent {
 }
 
 model AgentServices {
-  id        String @id @default(cuid())
-  agent_id  String
-  service_url String
+  id          String @id @default(cuid())
+  agent_id    String
+  url         String
 
-  metadata Json?
+  name        String?
+  description String?
+  method      String?  // GET, POST, PUT, DELETE, PATCH
+  
+  metadata    Json?    // x402 API response
 
   agent Agent @relation(fields: [agent_id], references: [id])
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
+  @@unique([agent_id, url])
   @@map("agent_services")
   @@schema("x402")
 }

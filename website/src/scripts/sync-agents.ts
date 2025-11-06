@@ -107,6 +107,99 @@ function extractAgentFromLogs(logs: string[]): { agentPubkey: PublicKey; instruc
 }
 
 /**
+ * Fetch x402 payment info from endpoint
+ */
+async function fetchX402Info(url: string): Promise<any | null> {
+  try {
+    console.log(`  🔍 Checking x402 endpoint: ${url}`);
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    // x402 endpoints should return 402 Payment Required without payment header
+    if (response.status === 402) {
+      const data = await response.json();
+      
+      // Validate x402 response format
+      if (data.accepts && Array.isArray(data.accepts) && data.x402Version) {
+        console.log(`  ✅ Valid x402 endpoint`);
+        return data;
+      } else {
+        console.log(`  ⚠️  Invalid x402 response format`);
+        return null;
+      }
+    } else {
+      console.log(`  ⚠️  Expected 402 status, got ${response.status}`);
+      return null;
+    }
+  } catch (error) {
+    console.error(`  ❌ Error fetching x402 info:`, error);
+    return null;
+  }
+}
+
+/**
+ * Sync agent endpoints from metadata
+ */
+async function syncAgentEndpoints(agentId: string, metadataJson: any) {
+  if (!metadataJson?.endpoints || !Array.isArray(metadataJson.endpoints)) {
+    console.log(`  ℹ️  No endpoints in metadata`);
+    return;
+  }
+
+  console.log(`  📡 Processing ${metadataJson.endpoints.length} endpoint(s)...`);
+
+  for (const endpoint of metadataJson.endpoints) {
+    if (!endpoint.url) {
+      console.log(`  ⚠️  Skipping endpoint without URL`);
+      continue;
+    }
+
+    try {
+      // Fetch x402 payment info
+      const x402Info = await fetchX402Info(endpoint.url);
+
+      if (!x402Info) {
+        console.log(`  ⚠️  Skipping non-x402 endpoint: ${endpoint.url}`);
+        continue;
+      }
+
+      // Upsert agent service
+      await prisma.agentServices.upsert({
+        where: {
+          agent_id_url: {
+            agent_id: agentId,
+            url: endpoint.url,
+          },
+        },
+        create: {
+          agent_id: agentId,
+          url: endpoint.url,
+          name: endpoint.name || null,
+          description: endpoint.description || null,
+          method: endpoint.method || null,
+          metadata: x402Info as any,
+        },
+        update: {
+          name: endpoint.name || null,
+          description: endpoint.description || null,
+          method: endpoint.method || null,
+          metadata: x402Info as any,
+          updated_at: new Date(),
+        },
+      });
+
+      console.log(`  ✅ Synced endpoint: ${endpoint.url}`);
+    } catch (error) {
+      console.error(`  ❌ Error syncing endpoint ${endpoint.url}:`, error);
+    }
+  }
+}
+
+/**
  * Fetch agent account and sync to database
  */
 async function syncAgentAccount(program: Program, agentPubkey: PublicKey) {
@@ -133,7 +226,7 @@ async function syncAgentAccount(program: Program, agentPubkey: PublicKey) {
     }
 
     // Upsert agent in database
-    await prisma.agent.upsert({
+    const agent = await prisma.agent.upsert({
       where: { address },
       create: {
         address,
@@ -163,6 +256,11 @@ async function syncAgentAccount(program: Program, agentPubkey: PublicKey) {
     });
 
     console.log(`✅ Agent synced to database: ${address}`);
+
+    // Sync endpoints from metadata
+    if (metadataJson) {
+      await syncAgentEndpoints(agent.id, metadataJson);
+    }
   } catch (error) {
     console.error(`❌ Error syncing agent account:`, error);
   }
