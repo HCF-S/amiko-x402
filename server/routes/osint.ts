@@ -1,11 +1,11 @@
 import { Hono } from "hono";
-import { type Resource, type SolanaAddress } from "x402-hono";
-import { customPaywallMiddleware } from "../middleware/customPaywall.js";
+import { paymentMiddleware, type Resource, type SolanaAddress } from "x402-hono";
 
 type PaymentConfig = {
   address: `0x${string}` | SolanaAddress;
   facilitatorUrl: Resource;
   network: string;
+  svmRpcUrl?: string;
 };
 
 type OsintConfig = {
@@ -32,7 +32,7 @@ export function createOsintRoute(config: OsintConfig) {
   if (config.solanaPayment) {
     app.get(
       "/osint/:handle",
-      customPaywallMiddleware(
+      paymentMiddleware(
         config.solanaPayment.address,
         {
           "GET /osint/*": {
@@ -40,7 +40,12 @@ export function createOsintRoute(config: OsintConfig) {
             network: config.solanaPayment.network,
           },
         },
-        { url: config.solanaPayment.facilitatorUrl }
+        { 
+          url: config.solanaPayment.facilitatorUrl,
+        },
+        {
+          svmRpcUrl: config.solanaPayment.svmRpcUrl,
+        }
       ),
       (c) => {
         const twitterHandle = c.req.param("handle");
@@ -53,7 +58,7 @@ export function createOsintRoute(config: OsintConfig) {
   if (config.basePayment) {
     app.get(
       "/base/osint/:handle",
-      customPaywallMiddleware(
+      paymentMiddleware(
         config.basePayment.address,
         {
           "GET /base/osint/*": {

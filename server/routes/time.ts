@@ -1,11 +1,11 @@
 import { Hono } from "hono";
-import { type Resource, type SolanaAddress } from "x402-hono";
-import { customPaywallMiddleware } from "../middleware/customPaywall.js";
+import { paymentMiddleware, type Resource, type SolanaAddress } from "x402-hono";
 
 type PaymentConfig = {
   address: `0x${string}` | SolanaAddress;
   facilitatorUrl: Resource;
   network: string;
+  svmRpcUrl?: string;
 };
 
 type TimeConfig = {
@@ -31,7 +31,7 @@ export function createTimeRoutes(config: TimeConfig) {
   if (config.solanaPayment) {
     app.get(
       "/time",
-      customPaywallMiddleware(
+      paymentMiddleware(
         config.solanaPayment.address,
         {
           "GET /time": {
@@ -39,7 +39,12 @@ export function createTimeRoutes(config: TimeConfig) {
             network: config.solanaPayment.network,
           },
         },
-        { url: config.solanaPayment.facilitatorUrl }
+        {
+          url: config.solanaPayment.facilitatorUrl,
+        },
+        {
+          svmRpcUrl: config.solanaPayment.svmRpcUrl,
+        }
       ),
       (c) => {
         return c.json(getTimeResponse());
@@ -51,7 +56,7 @@ export function createTimeRoutes(config: TimeConfig) {
   if (config.basePayment) {
     app.get(
       "/base/time",
-      customPaywallMiddleware(
+      paymentMiddleware(
         config.basePayment.address,
         {
           "GET /base/time": {

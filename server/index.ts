@@ -47,6 +47,7 @@ const solanaPaymentConfig = solanaAddress ? {
   address: solanaAddress,
   facilitatorUrl,
   network: getNetworkName(true),
+  svmRpcUrl,
 } : undefined;
 
 const basePaymentConfig = baseAddress ? {
