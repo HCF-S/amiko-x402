@@ -22,7 +22,6 @@
     "dist",
     "**/*.test.ts",
     "**/*.spec.ts",
-    "paywall/src/**",
-    "paywall/x402/**"
+    "paywall/src/**"
   ]
 }

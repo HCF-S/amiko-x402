@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { WalletAccount } from "@wallet-standard/base";
 import type { WalletWithSolanaFeatures } from "@solana/wallet-standard-features";
 
-import type { PaymentRequirements } from "../x402/types/verify";
-import { exact } from "../x402/schemes";
+import type { PaymentRequirements } from "x402/types";
+import { exact } from "x402/schemes";
 
 import { Spinner } from "./Spinner";
 import { ensureValidAmount } from "./utils";

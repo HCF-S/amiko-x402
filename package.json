@@ -1,0 +1,14 @@
+{
+  "name": "amiko-x402-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Amiko x402 monorepo workspace",
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm -r --parallel dev",
+    "clean": "pnpm -r clean"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

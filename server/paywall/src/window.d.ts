@@ -1,4 +1,4 @@
-import { PaymentRequirements } from "../x402/types/verify";
+import { PaymentRequirements } from "x402/types";
 
 declare global {
   interface Window {

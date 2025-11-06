@@ -1,6 +1,6 @@
-import { selectPaymentRequirements } from "../x402/client";
-import type { PaymentRequirements } from "../x402/types/verify";
-import { Network, SupportedEVMNetworks, SupportedSVMNetworks } from "../x402/types/shared";
+import { selectPaymentRequirements } from "x402/client";
+import type { PaymentRequirements } from "x402/types";
+import { Network, SupportedEVMNetworks, SupportedSVMNetworks } from "x402/types";
 
 const EVM_TESTNETS = new Set<Network>(["base-sepolia"]);
 const SVM_TESTNETS = new Set<Network>(["solana-devnet"]);

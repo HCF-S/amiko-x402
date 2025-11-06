@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { formatUnits } from "viem";
 import type { WalletAccount } from "@wallet-standard/base";
-import type { PaymentRequirements } from "../../x402/types/verify";
-import { getRpcClient } from "../../x402/utils/rpc";
+import type { PaymentRequirements } from "x402/types";
+import { svm } from "x402/shared";
 import type { Address } from "@solana/kit";
 import {
   TOKEN_PROGRAM_ADDRESS,
@@ -63,7 +63,7 @@ export function useSolanaBalance({
       try {
         setIsFetchingBalance(true);
 
-        const rpc = getRpcClient(paymentRequirement.network);
+        const rpc = svm.getRpcClient(paymentRequirement.network);
         const mint = await fetchMint(rpc, paymentRequirement.asset as Address);
         const tokenProgramAddress = mint.programAddress;
         const [ata] = await findAssociatedTokenPda({
