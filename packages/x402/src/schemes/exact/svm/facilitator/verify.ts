@@ -68,42 +68,28 @@ export async function verify(
   config?: X402Config,
 ): Promise<VerifyResponse> {
   try {
-    // TEMPORARY: Skip all verification for debugging
-    console.log("[VERIFY] Skipping verification checks for debugging");
-    
-    // decode the base64 encoded transaction to get payer
+    // verify that the scheme and network are supported
+    verifySchemesAndNetworks(payload, paymentRequirements);
+
+    // decode the base64 encoded transaction
     const svmPayload = payload.payload as ExactSvmPayload;
     const decodedTransaction = decodeTransactionFromPayload(svmPayload);
+    const rpc = getRpcClient(paymentRequirements.network, config?.svmConfig?.rpcUrl);
+
+    // perform transaction introspection to validate the transaction structure and details
+    await transactionIntrospection(svmPayload, paymentRequirements, signer, config);
+
+    // simulate the transaction to ensure it will execute successfully
+    const simulateResult = await signAndSimulateTransaction(signer, decodedTransaction, rpc);
+    if (simulateResult.value?.err) {
+      throw new Error(`invalid_exact_svm_payload_transaction_simulation_failed`);
+    }
 
     return {
       isValid: true,
       invalidReason: undefined,
       payer: getTokenPayerFromTransaction(decodedTransaction),
     };
-    
-    // ORIGINAL CODE (commented out for debugging):
-    // // verify that the scheme and network are supported
-    // verifySchemesAndNetworks(payload, paymentRequirements);
-
-    // // decode the base64 encoded transaction
-    // const svmPayload = payload.payload as ExactSvmPayload;
-    // const decodedTransaction = decodeTransactionFromPayload(svmPayload);
-    // const rpc = getRpcClient(paymentRequirements.network, config?.svmConfig?.rpcUrl);
-
-    // // perform transaction introspection to validate the transaction structure and details
-    // await transactionIntrospection(svmPayload, paymentRequirements, signer, config);
-
-    // // simulate the transaction to ensure it will execute successfully
-    // const simulateResult = await signAndSimulateTransaction(signer, decodedTransaction, rpc);
-    // if (simulateResult.value?.err) {
-    //   throw new Error(`invalid_exact_svm_payload_transaction_simulation_failed`);
-    // }
-
-    // return {
-    //   isValid: true,
-    //   invalidReason: undefined,
-    //   payer: getTokenPayerFromTransaction(decodedTransaction),
-    // };
   } catch (error) {
     // if the error is one of the known error reasons, return the error reason
     if (error instanceof Error) {
@@ -190,8 +176,41 @@ export async function transactionIntrospection(
   await verifyTransactionInstructions(transactionMessage, paymentRequirements, signer, rpc);
 }
 
+// Trustless program ID
+const TRUSTLESS_PROGRAM_ADDRESS = "GPd4z3N25UfjrkgfgSxsjoyG7gwYF8Fo7Emvp9TKsDeW" as Address;
+
+// Register job instruction discriminator from trustless program
+const REGISTER_JOB_DISCRIMINATOR = new Uint8Array([87, 213, 177, 255, 131, 17, 178, 45]);
+
+/**
+ * Check if an instruction is a trustless register_job instruction
+ */
+function isTrustlessRegisterJobInstruction(
+  instruction: Instruction<
+    string,
+    readonly (AccountLookupMeta<string, string> | AccountMeta<string>)[]
+  >,
+): boolean {
+  if (instruction.programAddress.toString() !== TRUSTLESS_PROGRAM_ADDRESS.toString()) {
+    return false;
+  }
+
+  if (!instruction.data || instruction.data.length < 8) {
+    return false;
+  }
+
+  // Check if the first 8 bytes match the register_job discriminator
+  const discriminator = new Uint8Array(instruction.data.slice(0, 8));
+  return discriminator.every((byte, index) => byte === REGISTER_JOB_DISCRIMINATOR[index]);
+}
+
 /**
  * Verify that the transaction contains the expected instructions.
+ * Supports both transactions with and without trustless register_job instruction.
+ *
+ * Transaction patterns:
+ * - Without trustless: [compute_limit, compute_price, transfer] or [compute_limit, compute_price, create_ata, transfer]
+ * - With trustless: [compute_limit, compute_price, transfer, register_job] or [compute_limit, compute_price, create_ata, transfer, register_job]
  *
  * @param transactionMessage - The transaction message to verify
  * @param paymentRequirements - The payment requirements to verify against
@@ -205,30 +224,65 @@ export async function verifyTransactionInstructions(
   signer: TransactionSigner,
   rpc: RpcDevnet<SolanaRpcApiDevnet> | RpcMainnet<SolanaRpcApiMainnet>,
 ) {
-  // validate the number of expected instructions
-  if (
-    transactionMessage.instructions.length !== 3 &&
-    transactionMessage.instructions.length !== 4
-  ) {
+  const instructionCount = transactionMessage.instructions.length;
+
+  // Check if the last instruction is a trustless register_job instruction
+  const hasTrustlessInstruction =
+    instructionCount >= 4 &&
+    isTrustlessRegisterJobInstruction(
+      transactionMessage.instructions[instructionCount - 1],
+    );
+
+  // Calculate the expected instruction count based on whether trustless is present
+  // Without trustless: 3-4 instructions (compute_limit, compute_price, [create_ata], transfer)
+  // With trustless: 4-5 instructions (compute_limit, compute_price, [create_ata], transfer, register_job)
+  const expectedMinInstructions = hasTrustlessInstruction ? 4 : 3;
+  const expectedMaxInstructions = hasTrustlessInstruction ? 5 : 4;
+
+  // Validate the number of expected instructions
+  if (instructionCount < expectedMinInstructions || instructionCount > expectedMaxInstructions) {
     throw new Error(`invalid_exact_svm_payload_transaction_instructions_length`);
   }
 
-  // verify that the compute limit and price instructions are valid
+  // Verify that the compute limit and price instructions are valid
   verifyComputeLimitInstruction(transactionMessage.instructions[0]);
   verifyComputePriceInstruction(transactionMessage.instructions[1]);
 
-  // verify that the fee payer is not included in any instruction's accounts
-  transactionMessage.instructions.forEach(instruction => {
-    if (instruction.accounts?.some(account => account.address === signer.address)) {
-      throw new Error(
-        `invalid_exact_svm_payload_transaction_fee_payer_included_in_instruction_accounts`,
-      );
+  // Verify that the fee payer is not included in any instruction's accounts
+  // (except for the trustless register_job instruction which may include the fee payer)
+  transactionMessage.instructions.forEach((instruction, index) => {
+    const isTrustlessInstruction = hasTrustlessInstruction && index === instructionCount - 1;
+    if (!isTrustlessInstruction) {
+      if (instruction.accounts?.some(account => account.address === signer.address)) {
+        throw new Error(
+          `invalid_exact_svm_payload_transaction_fee_payer_included_in_instruction_accounts`,
+        );
+      }
     }
   });
 
-  // verify that the transfer instruction is valid
-  // this expects the destination ATA to already exist
-  if (transactionMessage.instructions.length === 3) {
+  // Determine the transfer instruction index based on whether create_ata is present
+  // Without create_ata: transfer is at index 2
+  // With create_ata: create_ata is at index 2, transfer is at index 3
+  const hasCreateATA = hasTrustlessInstruction
+    ? instructionCount === 5
+    : instructionCount === 4;
+
+  if (hasCreateATA) {
+    // Verify that the create ATA instruction is valid
+    verifyCreateATAInstruction(transactionMessage.instructions[2], paymentRequirements);
+    // Verify that the transfer instruction is valid
+    await verifyTransferInstruction(
+      transactionMessage.instructions[3],
+      paymentRequirements,
+      {
+        txHasCreateDestATAInstruction: true,
+      },
+      signer,
+      rpc,
+    );
+  } else {
+    // Verify that the transfer instruction is valid
     await verifyTransferInstruction(
       transactionMessage.instructions[2],
       paymentRequirements,
@@ -240,20 +294,8 @@ export async function verifyTransactionInstructions(
     );
   }
 
-  // verify that the transfer instruction is valid
-  // this expects the destination ATA to be created in the same transaction
-  else {
-    verifyCreateATAInstruction(transactionMessage.instructions[2], paymentRequirements);
-    await verifyTransferInstruction(
-      transactionMessage.instructions[3],
-      paymentRequirements,
-      {
-        txHasCreateDestATAInstruction: true,
-      },
-      signer,
-      rpc,
-    );
-  }
+  // Note: We don't verify the trustless register_job instruction itself
+  // as it's optional and its validation is handled by the Solana runtime
 }
 
 /**
