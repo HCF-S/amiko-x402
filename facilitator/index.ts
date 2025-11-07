@@ -21,27 +21,38 @@ import { getFacilitatorPage } from "./page.js";
 
 config();
 
-const EVM_PRIVATE_KEY = process.env.EVM_PRIVATE_KEY || "";
+const BASE_MAINNET_PRIVATE_KEY = process.env.BASE_MAINNET_PRIVATE_KEY || "";
+const BASE_SEPOLIA_PRIVATE_KEY = process.env.BASE_SEPOLIA_PRIVATE_KEY || "";
 const SVM_PRIVATE_KEY = process.env.SVM_PRIVATE_KEY || "";
-const SVM_RPC_URL = process.env.SVM_RPC_URL || "";
+const SVM_RPC_MAINNET_URL = process.env.SVM_RPC_MAINNET_URL || "";
+const SVM_RPC_DEVNET_URL = process.env.SVM_RPC_DEVNET_URL || "";
 const TRUSTLESS_PROGRAM_ID = process.env.TRUSTLESS_PROGRAM_ID || "";
 const PORT = process.env.PORT || 3000;
-const USE_MAINNET = process.env.USE_MAINNET === "true";
 
-if (!EVM_PRIVATE_KEY && !SVM_PRIVATE_KEY) {
-  console.error("Missing required environment variables: EVM_PRIVATE_KEY or SVM_PRIVATE_KEY");
+if (!BASE_MAINNET_PRIVATE_KEY && !BASE_SEPOLIA_PRIVATE_KEY && !SVM_PRIVATE_KEY) {
+  console.error("Missing required environment variables: At least one of BASE_MAINNET_PRIVATE_KEY, BASE_SEPOLIA_PRIVATE_KEY, or SVM_PRIVATE_KEY");
   process.exit(1);
 }
 
-// Create X402 config with custom RPC URL and trustless program ID if provided
-const x402Config: X402Config | undefined = SVM_RPC_URL || TRUSTLESS_PROGRAM_ID
-  ? { 
-      svmConfig: { 
-        rpcUrl: SVM_RPC_URL || undefined,
+// Helper to get X402 config for a specific network
+const getX402Config = (network: string): X402Config | undefined => {
+  if (network === "solana" && SVM_RPC_MAINNET_URL) {
+    return {
+      svmConfig: {
+        rpcUrl: SVM_RPC_MAINNET_URL,
+      },
+    };
+  }
+  if (network === "solana-devnet" && (SVM_RPC_DEVNET_URL || TRUSTLESS_PROGRAM_ID)) {
+    return {
+      svmConfig: {
+        rpcUrl: SVM_RPC_DEVNET_URL || undefined,
         trustlessProgramId: TRUSTLESS_PROGRAM_ID || undefined,
-      } 
-    }
-  : undefined;
+      },
+    };
+  }
+  return undefined;
+};
 
 const app = express();
 
@@ -77,10 +88,16 @@ type SettleRequest = {
 
 // Health check endpoint - HTML page
 app.get("/", (req: Request, res: Response) => {
+  const networks: string[] = [];
+  if (BASE_MAINNET_PRIVATE_KEY) networks.push("Base Mainnet");
+  if (BASE_SEPOLIA_PRIVATE_KEY) networks.push("Base Sepolia");
+  if (SVM_PRIVATE_KEY && SVM_RPC_MAINNET_URL) networks.push("Solana Mainnet");
+  if (SVM_PRIVATE_KEY && SVM_RPC_DEVNET_URL) networks.push("Solana Devnet");
+  
   const html = getFacilitatorPage({
-    evmNetwork: EVM_PRIVATE_KEY ? (USE_MAINNET ? "Base Mainnet" : "Base Sepolia") : undefined,
-    svmNetwork: SVM_PRIVATE_KEY ? (USE_MAINNET ? "Solana Mainnet" : "Solana Devnet") : undefined,
-    useMainnet: USE_MAINNET,
+    evmNetwork: networks.filter(n => n.includes("Base")).join(", ") || undefined,
+    svmNetwork: networks.filter(n => n.includes("Solana")).join(", ") || undefined,
+    useMainnet: false, // Not used anymore
   });
   
   res.setHeader('Content-Type', 'text/html');
@@ -92,26 +109,48 @@ app.get("/supported", async (req: Request, res: Response) => {
   try {
     const kinds: SupportedPaymentKind[] = [];
 
-    // Base (EVM)
-    if (EVM_PRIVATE_KEY) {
-      const evmNetwork = USE_MAINNET ? "base" : "base-sepolia";
+    // Base Mainnet
+    if (BASE_MAINNET_PRIVATE_KEY) {
       kinds.push({
         x402Version: 1,
         scheme: "exact",
-        network: evmNetwork,
+        network: "base",
       });
     }
 
-    // Solana (SVM)
-    if (SVM_PRIVATE_KEY) {
-      const svmNetwork = USE_MAINNET ? "solana" : "solana-devnet";
-      const signer = await createSigner(svmNetwork, SVM_PRIVATE_KEY);
+    // Base Sepolia
+    if (BASE_SEPOLIA_PRIVATE_KEY) {
+      kinds.push({
+        x402Version: 1,
+        scheme: "exact",
+        network: "base-sepolia",
+      });
+    }
+
+    // Solana Mainnet
+    if (SVM_PRIVATE_KEY && SVM_RPC_MAINNET_URL) {
+      const signer = await createSigner("solana", SVM_PRIVATE_KEY);
       const feePayer = isSvmSignerWallet(signer) ? signer.address : undefined;
 
       kinds.push({
         x402Version: 1,
         scheme: "exact",
-        network: svmNetwork,
+        network: "solana",
+        extra: {
+          feePayer,
+        },
+      });
+    }
+
+    // Solana Devnet
+    if (SVM_PRIVATE_KEY && SVM_RPC_DEVNET_URL) {
+      const signer = await createSigner("solana-devnet", SVM_PRIVATE_KEY);
+      const feePayer = isSvmSignerWallet(signer) ? signer.address : undefined;
+
+      kinds.push({
+        x402Version: 1,
+        scheme: "exact",
+        network: "solana-devnet",
         extra: {
           feePayer,
         },
@@ -181,24 +220,19 @@ app.post("/prepare", async (req: Request, res: Response) => {
       },
     };
 
-    // Create config with trustless program ID if enabled
-    const prepareConfig: X402Config | undefined = body.enableTrustless && TRUSTLESS_PROGRAM_ID
+    // Get config for the network
+    const baseConfig = getX402Config(paymentRequirements.network);
+    
+    // Create config with trustless program ID if enabled (only for devnet)
+    const prepareConfig: X402Config | undefined = body.enableTrustless && TRUSTLESS_PROGRAM_ID && paymentRequirements.network === "solana-devnet"
       ? {
-          ...x402Config,
+          ...baseConfig,
           svmConfig: {
-            ...x402Config?.svmConfig,
+            ...baseConfig?.svmConfig,
             trustlessProgramId: TRUSTLESS_PROGRAM_ID,
           },
         }
-      : x402Config?.svmConfig
-      ? {
-          ...x402Config,
-          svmConfig: {
-            ...x402Config.svmConfig,
-            trustlessProgramId: undefined, // Explicitly remove trustless program ID
-          },
-        }
-      : x402Config;
+      : baseConfig;
 
     console.log("Creating unsigned transaction...");
     const unsignedTransaction = await createUnsignedTransaction(
@@ -268,7 +302,8 @@ app.post("/verify", async (req: Request, res: Response) => {
 
     // Verify payment
     console.log("Calling verify...");
-    const valid = await verify(client, paymentPayload, paymentRequirements, x402Config);
+    const config = getX402Config(paymentRequirements.network);
+    const valid = await verify(client, paymentPayload, paymentRequirements, config);
     console.log("Verify result:", JSON.stringify(valid, null, 2));
     console.log("=== VERIFY COMPLETE ===\n");
     
@@ -311,17 +346,23 @@ app.post("/settle", async (req: Request, res: Response) => {
 
     // Use the correct private key based on the requested network
     let signer: Signer;
-    if (SupportedEVMNetworks.includes(paymentRequirements.network)) {
-      if (!EVM_PRIVATE_KEY) {
-        throw new Error("EVM_PRIVATE_KEY not configured");
+    if (paymentRequirements.network === "base") {
+      if (!BASE_MAINNET_PRIVATE_KEY) {
+        throw new Error("BASE_MAINNET_PRIVATE_KEY not configured");
       }
-      console.log("Using EVM signer");
-      signer = await createSigner(paymentRequirements.network, EVM_PRIVATE_KEY);
+      console.log("Using Base Mainnet signer");
+      signer = await createSigner(paymentRequirements.network, BASE_MAINNET_PRIVATE_KEY);
+    } else if (paymentRequirements.network === "base-sepolia") {
+      if (!BASE_SEPOLIA_PRIVATE_KEY) {
+        throw new Error("BASE_SEPOLIA_PRIVATE_KEY not configured");
+      }
+      console.log("Using Base Sepolia signer");
+      signer = await createSigner(paymentRequirements.network, BASE_SEPOLIA_PRIVATE_KEY);
     } else if (SupportedSVMNetworks.includes(paymentRequirements.network)) {
       if (!SVM_PRIVATE_KEY) {
         throw new Error("SVM_PRIVATE_KEY not configured");
       }
-      console.log("Using SVM signer");
+      console.log(`Using ${paymentRequirements.network} signer`);
       signer = await createSigner(paymentRequirements.network, SVM_PRIVATE_KEY);
     } else {
       throw new Error(`Unsupported network: ${paymentRequirements.network}`);
@@ -329,7 +370,8 @@ app.post("/settle", async (req: Request, res: Response) => {
 
     // Settle payment
     console.log("Calling settle...");
-    const response = await settle(signer, paymentPayload, paymentRequirements, x402Config);
+    const config = getX402Config(paymentRequirements.network);
+    const response = await settle(signer, paymentPayload, paymentRequirements, config);
     console.log("Settle result:", JSON.stringify(response, null, 2));
     console.log("=== SETTLE COMPLETE ===\n");
     
@@ -345,8 +387,9 @@ app.post("/settle", async (req: Request, res: Response) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Amiko x402 Facilitator running at http://localhost:${PORT}`);
-  console.log(`Mode: ${USE_MAINNET ? "MAINNET" : "TESTNET"}`);
   console.log(`Supported networks:`);
-  if (EVM_PRIVATE_KEY) console.log(`  - ${USE_MAINNET ? "Base" : "Base Sepolia"} (EVM)`);
-  if (SVM_PRIVATE_KEY) console.log(`  - ${USE_MAINNET ? "Solana Mainnet" : "Solana Devnet"} (SVM)`);
+  if (BASE_MAINNET_PRIVATE_KEY) console.log(`  - Base Mainnet (EVM)`);
+  if (BASE_SEPOLIA_PRIVATE_KEY) console.log(`  - Base Sepolia (EVM)`);
+  if (SVM_PRIVATE_KEY && SVM_RPC_MAINNET_URL) console.log(`  - Solana Mainnet (SVM)`);
+  if (SVM_PRIVATE_KEY && SVM_RPC_DEVNET_URL) console.log(`  - Solana Devnet (SVM)`);
 });

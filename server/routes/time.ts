@@ -9,8 +9,10 @@ type PaymentConfig = {
 };
 
 type TimeConfig = {
-  solanaPayment?: PaymentConfig;
-  basePayment?: PaymentConfig;
+  solanaMainnet?: PaymentConfig;
+  solanaDevnet?: PaymentConfig;
+  baseMainnet?: PaymentConfig;
+  baseSepolia?: PaymentConfig;
 };
 
 // Helper to generate time response
@@ -27,23 +29,48 @@ const getTimeResponse = () => {
 export function createTimeRoutes(config: TimeConfig) {
   const app = new Hono();
 
-  // Solana time endpoint - costs $0.01
-  if (config.solanaPayment) {
+  // Solana Mainnet time endpoint - costs $0.01
+  if (config.solanaMainnet) {
     app.get(
       "/time",
       paymentMiddleware(
-        config.solanaPayment.address,
+        config.solanaMainnet.address,
         {
           "GET /time": {
             price: "$0.01",
-            network: config.solanaPayment.network as Network,
+            network: config.solanaMainnet.network as Network,
           },
         },
         {
-          url: config.solanaPayment.facilitatorUrl,
+          url: config.solanaMainnet.facilitatorUrl,
         },
         {
-          svmRpcUrl: config.solanaPayment.svmRpcUrl,
+          svmRpcUrl: config.solanaMainnet.svmRpcUrl,
+        }
+      ),
+      (c) => {
+        return c.json(getTimeResponse());
+      }
+    );
+  }
+
+  // Solana Devnet time endpoint - costs $0.01
+  if (config.solanaDevnet) {
+    app.get(
+      "/solana-devnet/time",
+      paymentMiddleware(
+        config.solanaDevnet.address,
+        {
+          "GET /solana-devnet/time": {
+            price: "$0.01",
+            network: config.solanaDevnet.network as Network,
+          },
+        },
+        {
+          url: config.solanaDevnet.facilitatorUrl,
+        },
+        {
+          svmRpcUrl: config.solanaDevnet.svmRpcUrl,
           enableTrustless: true,
         }
       ),
@@ -53,19 +80,39 @@ export function createTimeRoutes(config: TimeConfig) {
     );
   }
 
-  // Base time endpoint - costs $0.01
-  if (config.basePayment) {
+  // Base Mainnet time endpoint - costs $0.01
+  if (config.baseMainnet) {
     app.get(
       "/base/time",
       paymentMiddleware(
-        config.basePayment.address,
+        config.baseMainnet.address,
         {
           "GET /base/time": {
             price: "$0.01",
-            network: config.basePayment.network as Network,
+            network: config.baseMainnet.network as Network,
           },
         },
-        { url: config.basePayment.facilitatorUrl }
+        { url: config.baseMainnet.facilitatorUrl }
+      ),
+      (c) => {
+        return c.json(getTimeResponse());
+      }
+    );
+  }
+
+  // Base Sepolia time endpoint - costs $0.01
+  if (config.baseSepolia) {
+    app.get(
+      "/base-sepolia/time",
+      paymentMiddleware(
+        config.baseSepolia.address,
+        {
+          "GET /base-sepolia/time": {
+            price: "$0.01",
+            network: config.baseSepolia.network as Network,
+          },
+        },
+        { url: config.baseSepolia.facilitatorUrl }
       ),
       (c) => {
         return c.json(getTimeResponse());
