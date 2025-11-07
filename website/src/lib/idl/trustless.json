@@ -200,6 +200,10 @@
         },
         {
           "name": "client_wallet",
+          "signer": true
+        },
+        {
+          "name": "fee_payer",
           "writable": true,
           "signer": true
         },

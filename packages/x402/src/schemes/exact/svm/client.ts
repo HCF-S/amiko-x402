@@ -330,8 +330,11 @@ async function createRegisterJobInstruction(
   trustlessProgramId: string,
   transferInstructionIndex: number,
 ): Promise<Instruction> {
-  const { asset, payTo } = paymentRequirements;
+  const { asset, payTo, extra } = paymentRequirements;
   const programId = address(trustlessProgramId);
+  
+  // Extract fee payer from paymentRequirements.extra, default to client address
+  const feePayer = (extra?.feePayer as Address) || client.address;
 
   // Generate a unique identifier to use as the payment_tx address
   // This serves as a unique job ID and is used to derive the job_record PDA
@@ -392,7 +395,8 @@ async function createRegisterJobInstruction(
       { address: agentTokenAccount, role: 0 }, // agent_token_account (readonly)
       { address: paymentTxAddress, role: 0 }, // payment_tx (readonly, unique job identifier)
       { address: address("Sysvar1nstructions1111111111111111111111111"), role: 0 }, // instruction_sysvar
-      { address: client.address, role: 3 }, // client_wallet (signer + writable)
+      { address: client.address, role: 2 }, // client_wallet (signer)
+      { address: feePayer, role: 3 }, // fee_payer (signer + writable)
       { address: address("11111111111111111111111111111111"), role: 0 }, // system_program
       { address: tokenProgramAddress, role: 0 }, // token_program (readonly)
     ],
