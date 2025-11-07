@@ -182,3 +182,14 @@ Then start this server:
 ```bash
 pnpm dev
 ```
+
+Build packages
+```bassh
+pnpm build
+```
+
+or
+
+```bash
+pnpm --filter x402 build
+```
