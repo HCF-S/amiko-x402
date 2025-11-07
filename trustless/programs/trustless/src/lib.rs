@@ -397,7 +397,7 @@ pub struct DeactivateAgent<'info> {
 pub struct RegisterJob<'info> {
     #[account(
         init,
-        payer = client_wallet,
+        payer = fee_payer,
         space = 8 + std::mem::size_of::<JobRecord>(),
         seeds = [b"job", payment_tx.key().as_ref()],
         bump
@@ -435,8 +435,10 @@ pub struct RegisterJob<'info> {
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     pub instruction_sysvar: UncheckedAccount<'info>,
     
-    #[account(mut)]
     pub client_wallet: Signer<'info>,
+    
+    #[account(mut)]
+    pub fee_payer: Signer<'info>,
     
     pub system_program: Program<'info, System>,
     pub token_program: Interface<'info, TokenInterface>,
