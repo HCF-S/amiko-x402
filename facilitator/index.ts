@@ -190,6 +190,14 @@ app.post("/prepare", async (req: Request, res: Response) => {
             trustlessProgramId: TRUSTLESS_PROGRAM_ID,
           },
         }
+      : x402Config?.svmConfig
+      ? {
+          ...x402Config,
+          svmConfig: {
+            ...x402Config.svmConfig,
+            trustlessProgramId: undefined, // Explicitly remove trustless program ID
+          },
+        }
       : x402Config;
 
     console.log("Creating unsigned transaction...");
