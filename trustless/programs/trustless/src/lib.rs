@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked;
 use anchor_spl::token_interface::{TokenAccount, TokenInterface};
 
-declare_id!("CtZrqYPSzPipUnxB55hBzCHrQxtBfWPujyrnDBDeWpWe");
+declare_id!("GPd4z3N25UfjrkgfgSxsjoyG7gwYF8Fo7Emvp9TKsDeW");
 
 #[program]
 pub mod trustless {
@@ -22,6 +22,8 @@ pub mod trustless {
         agent_account.total_weight = 0;
         agent_account.avg_rating = 0.0;
         agent_account.last_update = clock.unix_timestamp;
+        agent_account.job_count = 0;
+        agent_account.feedback_count = 0;
 
         emit!(AgentRegistered {
             wallet: ctx.accounts.signer.key(),
@@ -116,7 +118,11 @@ pub mod trustless {
         let amount_bytes: [u8; 8] = transfer_ix.data[1..9]
             .try_into()
             .map_err(|_| ErrorCode::InvalidTransferAmount)?;
-        let payment_amount = u64::from_le_bytes(amount_bytes);
+        let payment_amount_u64 = u64::from_le_bytes(amount_bytes);
+        
+        // Convert to u32 and validate range (max ~4,294 USDC)
+        let payment_amount = u32::try_from(payment_amount_u64)
+            .map_err(|_| ErrorCode::PaymentAmountTooLarge)?;
         
         // Verify the transfer instruction accounts match our expected accounts
         // Transfer (discriminator 3): [source, destination, authority]
@@ -192,6 +198,8 @@ pub mod trustless {
                 total_weight: 0,
                 avg_rating: 0.0,
                 last_update: clock.unix_timestamp,
+                job_count: 0,
+                feedback_count: 0,
             };
             
             // Serialize and write data
@@ -203,16 +211,21 @@ pub mod trustless {
             });
         }
 
+        // Increment job count for agent
+        // Need to reload agent account data to increment counter
+        let agent_account_info = ctx.accounts.agent_account.to_account_info();
+        let mut agent_account_data: AgentAccount = AgentAccount::try_deserialize(&mut &agent_account_info.data.borrow()[..])?;
+        agent_account_data.job_count += 1;
+        agent_account_data.try_serialize(&mut &mut agent_account_info.data.borrow_mut()[..])?;
+
         // Create job record
-        job_record.job_id = job_record_key;
         job_record.client_wallet = ctx.accounts.client_wallet.key();
         job_record.agent_wallet = ctx.accounts.agent_wallet.key();
-        job_record.payment_tx = ctx.accounts.payment_tx.key();
         job_record.payment_amount = payment_amount;
         job_record.created_at = clock.unix_timestamp;
 
         emit!(JobRegistered {
-            job_id: job_record.job_id,
+            job_id: job_record_key,  // Use PDA key instead of removed field
             agent_wallet: job_record.agent_wallet,
             client_wallet: job_record.client_wallet,
             payment_amount,
@@ -239,25 +252,13 @@ pub mod trustless {
             ErrorCode::UnauthorizedClient
         );
 
-        // Validate proof of payment matches job record
-        require!(
-            job_record.payment_tx == ctx.accounts.proof_of_payment.key(),
-            ErrorCode::InvalidProofOfPayment
-        );
-
         // Get feedback_record key before mutable borrow
-        let feedback_record_key = ctx.accounts.feedback_record.key();
         let feedback_record = &mut ctx.accounts.feedback_record;
         
         // Create feedback record
-        feedback_record.feedback_id = feedback_record_key;
-        feedback_record.job_id = job_record.job_id;
-        feedback_record.client_wallet = ctx.accounts.client_wallet.key();
-        feedback_record.agent_wallet = job_record.agent_wallet;
+        feedback_record.job_id = ctx.accounts.job_record.key();
         feedback_record.rating = rating;
         feedback_record.comment_uri = comment_uri;
-        feedback_record.proof_of_payment = ctx.accounts.proof_of_payment.key();
-        feedback_record.payment_amount = job_record.payment_amount;
         feedback_record.timestamp = clock.unix_timestamp;
 
         // Update agent reputation with payment-weighted scoring
@@ -269,9 +270,10 @@ pub mod trustless {
         agent_account.avg_rating = 
             (agent_account.total_weighted_rating as f64 / agent_account.total_weight as f64) as f32;
         agent_account.last_update = clock.unix_timestamp;
+        agent_account.feedback_count += 1;
 
         emit!(FeedbackSubmitted {
-            job_id: job_record.job_id,
+            job_id: ctx.accounts.job_record.key(),
             client_wallet: ctx.accounts.client_wallet.key(),
             agent_wallet: job_record.agent_wallet,
             rating,
@@ -302,28 +304,23 @@ pub struct AgentAccount {
     pub total_weight: u128,              // 16
     pub avg_rating: f32,                 // 4
     pub last_update: i64,                // 8
+    pub job_count: u32,                  // 4
+    pub feedback_count: u32,             // 4
 }
 
 #[account]
 pub struct JobRecord {
-    pub job_id: Pubkey,                  // 32
     pub client_wallet: Pubkey,           // 32
     pub agent_wallet: Pubkey,            // 32
-    pub payment_tx: Pubkey,              // 32
-    pub payment_amount: u64,             // 8
+    pub payment_amount: u32,             // 4 (max ~4,294 USDC with 6 decimals)
     pub created_at: i64,                 // 8
 }
 
 #[account]
 pub struct FeedbackRecord {
-    pub feedback_id: Pubkey,             // 32
     pub job_id: Pubkey,                  // 32
-    pub client_wallet: Pubkey,           // 32
-    pub agent_wallet: Pubkey,            // 32
     pub rating: u8,                      // 1
     pub comment_uri: Option<String>,     // 1 + 4 + max 200 = 205
-    pub proof_of_payment: Pubkey,        // 32
-    pub payment_amount: u64,             // 8
     pub timestamp: i64,                  // 8
 }
 
@@ -331,7 +328,7 @@ pub struct FeedbackRecord {
 // Context Structures
 // ============================================================================
 
-// total space is 298 now, use 320
+// total space is 306 now, use 320
 // space = 8  // discriminator
 //         + 32   // wallet: Pubkey
 //         + 4 + 200 // metadata_uri: String (4 bytes prefix + 200 bytes max)
@@ -342,6 +339,8 @@ pub struct FeedbackRecord {
 //         + 16   // total_weight
 //         + 4    // avg_rating
 //         + 8    // last_update
+//         + 4    // job_count
+//         + 4    // feedback_count
 
 #[derive(Accounts)]
 pub struct RegisterAgent<'info> {
@@ -448,8 +447,8 @@ pub struct SubmitFeedback<'info> {
     #[account(
         init,
         payer = client_wallet,
-        space = 400,  // 8 (discriminator) + 32 (feedback_id) + 32 (job_id) + 32 (client) + 32 (agent) + 1 (rating) + 205 (comment_uri) + 32 (proof_of_payment) + 8 (payment_amount) + 8 (timestamp) = 390, use 400 for safety
-        seeds = [b"feedback", job_record.job_id.as_ref()],
+        space = 264,  // 8 (discriminator) + 32 (job_id) + 1 (rating) + 205 (comment_uri) + 8 (timestamp) = 254, use 264 for safety
+        seeds = [b"feedback", job_record.key().as_ref()],
         bump
     )]
     pub feedback_record: Account<'info, FeedbackRecord>,
@@ -507,7 +506,7 @@ pub struct JobRegistered {
     pub job_id: Pubkey,
     pub agent_wallet: Pubkey,
     pub client_wallet: Pubkey,
-    pub payment_amount: u64,
+    pub payment_amount: u32,
 }
 
 #[event]
@@ -516,7 +515,7 @@ pub struct FeedbackSubmitted {
     pub client_wallet: Pubkey,
     pub agent_wallet: Pubkey,
     pub rating: u8,
-    pub payment_amount: u64,
+    pub payment_amount: u32,
 }
 
 #[event]
@@ -540,9 +539,6 @@ pub enum ErrorCode {
     #[msg("Agent wallet does not match agent account")]
     UnauthorizedAgent,
     
-    #[msg("Proof of payment does not match job record")]
-    InvalidProofOfPayment,
-    
     #[msg("Token mint mismatch between client and agent accounts")]
     TokenMintMismatch,
     
@@ -551,9 +547,6 @@ pub enum ErrorCode {
     
     #[msg("Agent token account owner does not match agent")]
     InvalidAgentTokenAccount,
-    
-    #[msg("Invalid transfer instruction")]
-    InvalidTransferInstruction,
     
     #[msg("Transfer instruction program ID does not match token program")]
     InvalidTransferProgramId,
@@ -575,4 +568,7 @@ pub enum ErrorCode {
     
     #[msg("Transfer authority mismatch")]
     TransferAuthorityMismatch,
+    
+    #[msg("Payment amount too large (max ~4,294 USDC)")]
+    PaymentAmountTooLarge,
 }

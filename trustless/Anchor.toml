@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-trustless = "CtZrqYPSzPipUnxB55hBzCHrQxtBfWPujyrnDBDeWpWe"
+trustless = "GPd4z3N25UfjrkgfgSxsjoyG7gwYF8Fo7Emvp9TKsDeW"
 
 [registry]
 url = "https://api.apr.dev"
