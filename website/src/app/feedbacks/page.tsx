@@ -175,65 +175,61 @@ export default function FeedbacksPage() {
                 </Card>
               ) : (
                 filteredFeedbacks.map((feedback) => (
-                  <Card key={feedback.id}>
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-3">
-                            <CardTitle className="text-lg font-mono">
-                              {feedback.id}
-                            </CardTitle>
-                            {renderStars(feedback.rating)}
-                          </div>
-                          <CardDescription>
-                            Submitted: {formatDate(feedback.timestamp)}
-                          </CardDescription>
+                  <Card key={feedback.id} className="p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-mono text-sm font-medium">{shortenAddress(feedback.id)}</span>
+                          <span className="text-xs text-gray-500">•</span>
+                          <span className="text-xs text-gray-500">{formatDate(feedback.timestamp)}</span>
+                          <span className="text-xs text-gray-500">•</span>
+                          {renderStars(feedback.rating)}
                         </div>
-                        {feedback.transaction && (
-                          <a
-                            href={getExplorerUrl(feedback.transaction)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:text-primary/80 flex items-center gap-1 text-sm"
-                          >
-                            View TX <ExternalLink className="h-3 w-3" />
-                          </a>
-                        )}
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Client Wallet</p>
-                          <p className="font-mono text-sm">{feedback.client_wallet}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Agent Wallet</p>
-                          <p className="font-mono text-sm">{feedback.agent_wallet}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Job ID</p>
-                          <p className="font-mono text-sm break-all">{feedback.job_id}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Rating</p>
-                          <p className="text-lg font-semibold">{feedback.rating} / 5</p>
-                        </div>
-                        {feedback.comment_uri && (
-                          <div className="md:col-span-2">
-                            <p className="text-sm font-medium text-muted-foreground">Comment URI</p>
-                            <a
-                              href={feedback.comment_uri}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary hover:text-primary/80 text-sm flex items-center gap-1 break-all"
-                            >
-                              {feedback.comment_uri} <ExternalLink className="h-3 w-3 flex-shrink-0" />
-                            </a>
-                          </div>
-                        )}
+                      {feedback.transaction && (
+                        <a
+                          href={getExplorerUrl(feedback.transaction)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:text-primary/80 flex items-center gap-1 text-xs"
+                        >
+                          View TX <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                      <div>
+                        <p className="text-sm text-gray-500 mb-0.5">Client</p>
+                        <p className="font-mono text-sm">{shortenAddress(feedback.client_wallet)}</p>
                       </div>
-                    </CardContent>
+                      <div>
+                        <p className="text-sm text-gray-500 mb-0.5">Agent</p>
+                        <p className="font-mono text-sm">{shortenAddress(feedback.agent_wallet)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500 mb-0.5">Job ID</p>
+                        <p className="font-mono text-sm">{shortenAddress(feedback.job_id)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500 mb-0.5">Rating</p>
+                        <p className="font-semibold">{feedback.rating} / 5</p>
+                      </div>
+                    </div>
+
+                    {feedback.comment_uri && (
+                      <div className="mt-3 pt-3 border-t">
+                        <p className="text-xs text-gray-500 mb-1">Comment URI</p>
+                        <a
+                          href={feedback.comment_uri}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:text-primary/80 text-xs flex items-center gap-1 break-all"
+                        >
+                          {feedback.comment_uri} <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                        </a>
+                      </div>
+                    )}
                   </Card>
                 ))
               )}
