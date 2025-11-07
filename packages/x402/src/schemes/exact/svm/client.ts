@@ -15,6 +15,8 @@ import {
   address,
   getAddressEncoder,
   getProgramDerivedAddress,
+  getCompiledTransactionMessageEncoder,
+  compileTransactionMessage,
 } from "@solana/kit";
 import { PaymentPayload, PaymentRequirements } from "../../../types/verify";
 import { X402Config } from "../../../types/config";
@@ -89,6 +91,43 @@ export async function createAndSignPayment(
       transaction: base64EncodedWireTransaction,
     },
   } as PaymentPayload;
+}
+
+/**
+ * Creates an unsigned transfer transaction for the given wallet address and payment requirements.
+ * This is used by facilitators to prepare transactions for clients to sign.
+ *
+ * @param walletAddress - The wallet address that will sign and pay for the transaction
+ * @param paymentRequirements - The payment requirements
+ * @param config - Optional configuration for X402 operations (e.g., custom RPC URLs)
+ * @returns A promise that resolves to a base64 encoded unsigned transaction
+ */
+export async function createUnsignedTransaction(
+  walletAddress: string,
+  paymentRequirements: PaymentRequirements,
+  config?: X402Config,
+): Promise<string> {
+  // Create a mock signer with the wallet address
+  const mockSigner: TransactionSigner = {
+    address: walletAddress as Address,
+    signTransactions: async () => { throw new Error("Not implemented"); },
+  };
+
+  const transactionMessage = await createTransferTransactionMessage(
+    mockSigner,
+    paymentRequirements,
+    config,
+  );
+
+  // Compile the transaction message
+  const compiledTransactionMessage = compileTransactionMessage(transactionMessage);
+  
+  // Serialize the compiled transaction message to base64
+  const encoder = getCompiledTransactionMessageEncoder();
+  const encodedMessage = encoder.encode(compiledTransactionMessage);
+  
+  // Convert to base64
+  return btoa(String.fromCharCode(...encodedMessage));
 }
 
 /**

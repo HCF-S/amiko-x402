@@ -143,6 +143,10 @@ export function getFacilitatorPage(options: {
         <div class="endpoint-desc">Get supported payment networks and schemes</div>
       </div>
       <div class="endpoint">
+        <div class="endpoint-path">POST /prepare</div>
+        <div class="endpoint-desc">Prepare unsigned transaction for client wallet to sign</div>
+      </div>
+      <div class="endpoint">
         <div class="endpoint-path">POST /verify</div>
         <div class="endpoint-desc">Verify payment payload against requirements</div>
       </div>

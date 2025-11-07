@@ -1,6 +1,7 @@
 import { config } from "dotenv";
 import express, { Request, Response } from "express";
 import { verify, settle } from "x402/facilitator";
+import { createUnsignedTransaction } from "x402/client";
 import {
   PaymentRequirementsSchema,
   type PaymentRequirements,
@@ -23,6 +24,7 @@ config();
 const EVM_PRIVATE_KEY = process.env.EVM_PRIVATE_KEY || "";
 const SVM_PRIVATE_KEY = process.env.SVM_PRIVATE_KEY || "";
 const SVM_RPC_URL = process.env.SVM_RPC_URL || "";
+const TRUSTLESS_PROGRAM_ID = process.env.TRUSTLESS_PROGRAM_ID || "";
 const PORT = process.env.PORT || 3000;
 const USE_MAINNET = process.env.USE_MAINNET === "true";
 
@@ -31,9 +33,14 @@ if (!EVM_PRIVATE_KEY && !SVM_PRIVATE_KEY) {
   process.exit(1);
 }
 
-// Create X402 config with custom RPC URL if provided
-const x402Config: X402Config | undefined = SVM_RPC_URL
-  ? { svmConfig: { rpcUrl: SVM_RPC_URL } }
+// Create X402 config with custom RPC URL and trustless program ID if provided
+const x402Config: X402Config | undefined = SVM_RPC_URL || TRUSTLESS_PROGRAM_ID
+  ? { 
+      svmConfig: { 
+        rpcUrl: SVM_RPC_URL || undefined,
+        trustlessProgramId: TRUSTLESS_PROGRAM_ID || undefined,
+      } 
+    }
   : undefined;
 
 const app = express();
@@ -51,6 +58,12 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+type PrepareRequest = {
+  paymentRequirements: PaymentRequirements;
+  walletAddress: string;
+  enableTrustless?: boolean;
+};
 
 type VerifyRequest = {
   paymentPayload: PaymentPayload;
@@ -109,6 +122,96 @@ app.get("/supported", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error getting supported kinds:", error);
     res.status(500).json({ error: "Failed to get supported payment kinds" });
+  }
+});
+
+// Prepare endpoint info
+app.get("/prepare", (req: Request, res: Response) => {
+  res.json({
+    endpoint: "/prepare",
+    description: "POST to prepare unsigned transactions for client wallets to sign",
+    method: "POST",
+    body: {
+      paymentRequirements: "PaymentRequirements object from 402 response",
+      walletAddress: "string - Client's Solana wallet address",
+      enableTrustless: "boolean (optional) - Include trustless register_job instruction",
+    },
+    response: {
+      transaction: "string - Base64 encoded unsigned transaction",
+      paymentRequirements: "PaymentRequirements - Enriched with fee payer",
+    },
+    notes: [
+      "Only supports Solana (SVM) networks",
+      "Facilitator acts as fee payer for the transaction",
+      "Client must sign the transaction with their wallet before submitting",
+      "If enableTrustless is true, includes on-chain job registration",
+    ],
+  });
+});
+
+// Prepare endpoint - creates unsigned transaction for client to sign
+app.post("/prepare", async (req: Request, res: Response) => {
+  try {
+    console.log("\n=== PREPARE REQUEST ===");
+    const body: PrepareRequest = req.body;
+    console.log("Wallet Address:", body.walletAddress);
+    console.log("Enable Trustless:", body.enableTrustless);
+    
+    const paymentRequirements = PaymentRequirementsSchema.parse(body.paymentRequirements);
+    
+    // Only support SVM networks for now
+    if (!SupportedSVMNetworks.includes(paymentRequirements.network)) {
+      throw new Error(`Prepare endpoint only supports SVM networks. Received: ${paymentRequirements.network}`);
+    }
+
+    // Get the facilitator's address to use as fee payer
+    const signer = await createSigner(paymentRequirements.network, SVM_PRIVATE_KEY);
+    const feePayer = isSvmSignerWallet(signer) ? signer.address : undefined;
+    
+    if (!feePayer) {
+      throw new Error("Failed to get fee payer address from signer");
+    }
+
+    // Add fee payer to payment requirements
+    const enrichedPaymentRequirements: PaymentRequirements = {
+      ...paymentRequirements,
+      extra: {
+        ...paymentRequirements.extra,
+        feePayer,
+      },
+    };
+
+    // Create config with trustless program ID if enabled
+    const prepareConfig: X402Config | undefined = body.enableTrustless && TRUSTLESS_PROGRAM_ID
+      ? {
+          ...x402Config,
+          svmConfig: {
+            ...x402Config?.svmConfig,
+            trustlessProgramId: TRUSTLESS_PROGRAM_ID,
+          },
+        }
+      : x402Config;
+
+    console.log("Creating unsigned transaction...");
+    const unsignedTransaction = await createUnsignedTransaction(
+      body.walletAddress,
+      enrichedPaymentRequirements,
+      prepareConfig,
+    );
+    
+    console.log("Unsigned transaction created successfully");
+    console.log("=== PREPARE COMPLETE ===\n");
+    
+    res.json({
+      transaction: unsignedTransaction,
+      paymentRequirements: enrichedPaymentRequirements,
+    });
+  } catch (error) {
+    console.error("Prepare error:", error);
+    res.status(400).json({
+      error: "Invalid request",
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
   }
 });
 
