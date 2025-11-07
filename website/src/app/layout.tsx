@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SolanaWalletProvider } from "@/components/WalletProvider";
 import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,9 +33,10 @@ export default function RootLayout({
         <SolanaWalletProvider>
           <Header />
           <div className="bg-gradient-to-b from-gray-50 to-white">
-            <div className="pt-16 max-w-6xl mx-auto px-4">
+            <div className="pt-16 max-w-6xl mx-auto px-4 flex-1">
               {children}
             </div>
+            <Footer />
           </div>
         </SolanaWalletProvider>
       </body>
