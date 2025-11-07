@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Search, ExternalLink } from 'lucide-react';
+import { Search, ExternalLink, MessageSquare } from 'lucide-react';
+import Link from 'next/link';
 
 interface JobRecord {
   id: string;
@@ -14,9 +16,13 @@ interface JobRecord {
   transaction?: string;
   created_at: string;
   updated_at: string;
+  feedback?: {
+    id: string;
+  } | null;
 }
 
 export default function JobsPage() {
+  const { publicKey } = useWallet();
   const [jobs, setJobs] = useState<JobRecord[]>([]);
   const [filteredJobs, setFilteredJobs] = useState<JobRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -151,44 +157,77 @@ export default function JobsPage() {
                   </CardContent>
                 </Card>
               ) : (
-                filteredJobs.map((job) => (
-                  <Card key={job.id} className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-mono text-sm font-medium">{job.id}</span>
-                          <span className="text-xs text-gray-500">•</span>
-                          <span className="text-xs text-gray-500">{formatDate(job.created_at_chain)}</span>
+                filteredJobs.map((job) => {
+                  const isUserJob = publicKey && job.client_wallet === publicKey.toBase58();
+                  const hasFeedback = job.feedback !== null;
+                  const canLeaveFeedback = isUserJob && !hasFeedback;
+
+                  return (
+                    <Card key={job.id} className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-mono text-sm font-medium">{job.id}</span>
+                            <span className="text-xs text-gray-500">•</span>
+                            <span className="text-xs text-gray-500">{formatDate(job.created_at_chain)}</span>
+                            {isUserJob && (
+                              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                                Your Job
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {job.transaction && (
+                            <a
+                              href={getExplorerUrl(job.transaction)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:text-primary/80 flex items-center gap-1 text-xs"
+                            >
+                              View TX <ExternalLink className="h-3 w-3" />
+                            </a>
+                          )}
                         </div>
                       </div>
-                      {job.transaction && (
-                        <a
-                          href={getExplorerUrl(job.transaction)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary hover:text-primary/80 flex items-center gap-1 text-xs"
-                        >
-                          View TX <ExternalLink className="h-3 w-3" />
-                        </a>
-                      )}
-                    </div>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                      <div>
-                        <p className="text-sm text-gray-500 mb-0.5">Client</p>
-                        <p className="font-mono text-sm">{shortenAddress(job.client_wallet)}</p>
+                      
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                        <div>
+                          <p className="text-sm text-gray-500 mb-0.5">Client</p>
+                          <p className="font-mono text-sm">{shortenAddress(job.client_wallet)}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500 mb-0.5">Agent</p>
+                          <p className="font-mono text-sm">{shortenAddress(job.agent_wallet)}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500 mb-0.5">Payment</p>
+                          <p className="font-semibold">${formatAmount(job.payment_amount)} USDC</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500 mb-0.5">Feedback</p>
+                          {hasFeedback ? (
+                            <Link href={`/feedbacks?search=${job.id}`}>
+                              <span className="text-xs text-green-600 hover:text-green-700 flex items-center gap-1">
+                                <MessageSquare className="h-3 w-3" />
+                                View
+                              </span>
+                            </Link>
+                          ) : canLeaveFeedback ? (
+                            <Link href={`/submit-feedback?job_id=${job.id}`}>
+                              <span className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1">
+                                <MessageSquare className="h-3 w-3" />
+                                Leave
+                              </span>
+                            </Link>
+                          ) : (
+                            <span className="text-xs text-gray-400">—</span>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-500 mb-0.5">Agent</p>
-                        <p className="font-mono text-sm">{shortenAddress(job.agent_wallet)}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500 mb-0.5">Payment</p>
-                        <p className="font-semibold">${formatAmount(job.payment_amount)} USDC</p>
-                      </div>
-                    </div>
-                  </Card>
-                ))
+                    </Card>
+                  );
+                })
               )}
             </div>
           )}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Search, ExternalLink, Star } from 'lucide-react';
@@ -19,6 +20,7 @@ interface FeedbackRecord {
 }
 
 export default function FeedbacksPage() {
+  const searchParams = useSearchParams();
   const [feedbacks, setFeedbacks] = useState<FeedbackRecord[]>([]);
   const [filteredFeedbacks, setFilteredFeedbacks] = useState<FeedbackRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +29,12 @@ export default function FeedbacksPage() {
 
   useEffect(() => {
     fetchFeedbacks();
-  }, []);
+    // Set initial filter from URL if present
+    const searchParam = searchParams.get('search');
+    if (searchParam) {
+      setAgentFilter(searchParam);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (agentFilter.trim() === '') {

@@ -9,6 +9,13 @@ export async function GET() {
       orderBy: {
         created_at_chain: 'desc',
       },
+      include: {
+        feedback: {
+          select: {
+            id: true,
+          },
+        },
+      },
     });
 
     return NextResponse.json({

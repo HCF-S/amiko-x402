@@ -164,8 +164,17 @@ async function startEventListener() {
       // Handle SubmitFeedback instruction
       if (instruction === 'SubmitFeedback') {
         const emoji = '⭐';
-        console.log(`${emoji} Feedback submission detected: ${pubkey.toBase58()}`);
-        await syncFeedbackRecord(program, pubkey, logs.signature);
+        console.log(`${emoji} Feedback submission detected for job: ${pubkey.toBase58()}`);
+        
+        // The pubkey from logs is the job record address
+        // Derive the feedback PDA from the job record
+        const [feedbackPDA] = PublicKey.findProgramAddressSync(
+          [Buffer.from('feedback'), pubkey.toBuffer()],
+          PROGRAM_ID
+        );
+        
+        console.log(`🔍 Derived feedback PDA: ${feedbackPDA.toBase58()}`);
+        await syncFeedbackRecord(program, feedbackPDA, logs.signature);
       }
     },
     'confirmed'
