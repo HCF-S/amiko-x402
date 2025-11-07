@@ -95,9 +95,7 @@ app.get("/", (req: Request, res: Response) => {
   if (SVM_PRIVATE_KEY && SVM_RPC_DEVNET_URL) networks.push("Solana Devnet");
   
   const html = getFacilitatorPage({
-    evmNetwork: networks.filter(n => n.includes("Base")).join(", ") || undefined,
-    svmNetwork: networks.filter(n => n.includes("Solana")).join(", ") || undefined,
-    useMainnet: false, // Not used anymore
+    networks,
   });
   
   res.setHeader('Content-Type', 'text/html');

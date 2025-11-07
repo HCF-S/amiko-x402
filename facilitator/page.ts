@@ -2,11 +2,9 @@
  * Generates the HTML landing page for the facilitator
  */
 export function getFacilitatorPage(options: {
-  evmNetwork?: string;
-  svmNetwork?: string;
-  useMainnet: boolean;
+  networks: string[];
 }): string {
-  const { evmNetwork, svmNetwork, useMainnet } = options;
+  const { networks } = options;
   
   return `
 <!DOCTYPE html>
@@ -30,7 +28,7 @@ export function getFacilitatorPage(options: {
       background: white;
       border-radius: 16px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-      max-width: 600px;
+      max-width: 640px;
       width: 100%;
       padding: 40px;
     }
@@ -91,23 +89,23 @@ export function getFacilitatorPage(options: {
     .network {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       background: #edf2f7;
-      padding: 8px 16px;
-      border-radius: 8px;
-      margin-right: 8px;
-      margin-bottom: 8px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      margin-right: 6px;
+      margin-bottom: 6px;
     }
     .network-badge {
-      width: 8px;
-      height: 8px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
       background: #48bb78;
     }
     .network-name {
       color: #2d3748;
       font-weight: 500;
-      font-size: 14px;
+      font-size: 13px;
     }
     .footer {
       margin-top: 32px;
@@ -160,22 +158,19 @@ export function getFacilitatorPage(options: {
       <div class="section-title">
         🌐 Network Support
       </div>
-      ${evmNetwork ? `
+      ${networks.map(network => `
       <div class="network">
         <div class="network-badge"></div>
-        <div class="network-name">${evmNetwork}</div>
+        <div class="network-name">${network}</div>
       </div>
-      ` : ''}
-      ${svmNetwork ? `
-      <div class="network">
-        <div class="network-badge"></div>
-        <div class="network-name">${svmNetwork}</div>
+      `).join('')}
+      <div style="margin-top: 12px; color: #718096; font-size: 13px;">
+         • Solana Trustless Agent Protocol is supported • <a href="https://trustless.heyamiko.com/" target="_blank" rel="noopener noreferrer" style="color: #37768b; text-decoration: none; font-weight: 500;">details</a>
       </div>
-      ` : ''}
     </div>
     
     <div class="footer">
-      Mode: ${useMainnet ? 'MAINNET' : 'TESTNET'} • Powered by x402
+      Powered by x402
       <br><br>
       <a href="https://heyamiko.com/" target="_blank" rel="noopener noreferrer">
         <img src="https://platform.heyamiko.com/amiko-logo.png" alt="Amiko Logo" class="logo">
