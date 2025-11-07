@@ -4,6 +4,9 @@ import useSWR from 'swr';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { PublicKey } from '@solana/web3.js';
+import { getAgentPDA } from '@/lib/program';
+import { ExternalLink } from 'lucide-react';
 
 // Simple Badge component
 const Badge = ({ children, variant = 'default', className = '' }: { 
@@ -33,6 +36,8 @@ interface Agent {
   auto_created: boolean;
   avg_rating: number;
   total_weight: string;
+  job_count: number;
+  feedback_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -57,6 +62,19 @@ export default function AgentsPage() {
       month: 'short',
       day: 'numeric',
     });
+  };
+
+  const getAgentPDAExplorerUrl = (walletAddress: string) => {
+    try {
+      const walletPubkey = new PublicKey(walletAddress);
+      const [agentPDA] = getAgentPDA(walletPubkey);
+      const network = process.env.NEXT_PUBLIC_SOLANA_NETWORK || 'devnet';
+      const clusterParam = network === 'mainnet-beta' ? '' : `?cluster=${network}`;
+      return `https://explorer.solana.com/address/${agentPDA.toBase58()}/anchor-account${clusterParam}`;
+    } catch (error) {
+      console.error('Error generating PDA explorer URL:', error);
+      return null;
+    }
   };
 
   return (
@@ -140,7 +158,7 @@ export default function AgentsPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-gray-500">Jobs:</span>
                       <span className="font-medium">
-                        {agent.total_weight !== '0' ? agent.total_weight : 'None'}
+                        {agent.job_count !== '0' ? agent.job_count : 'None'}
                       </span>
                     </div>
                     
@@ -153,11 +171,27 @@ export default function AgentsPage() {
                   </div>
 
                   <div className="mt-4 pt-4 border-t space-y-2">
-                    <Link href={`/services?agent_wallet=${agent.wallet}`}>
-                      <Button variant="outline" className="w-full text-sm">
-                        View Services →
-                      </Button>
-                    </Link>
+                    <div>
+                      <Link href={`/services?agent_wallet=${agent.wallet}`}>
+                        <Button variant="outline" className="w-full text-sm">
+                          View Services →
+                        </Button>
+                      </Link>
+                    </div>
+                    {getAgentPDAExplorerUrl(agent.wallet) && (
+                      <div>
+                        <a
+                          href={getAgentPDAExplorerUrl(agent.wallet)!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Button variant="outline" className="w-full text-sm">
+                            View on Explorer
+                            <ExternalLink className="h-2 w-2" />
+                          </Button>
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
