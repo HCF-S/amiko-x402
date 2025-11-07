@@ -23,6 +23,12 @@ export const Header = () => {
               <Link href="/services" className="text-sm font-medium hover:text-primary transition-colors">
                 Services
               </Link>
+              <Link href="/jobs" className="text-sm font-medium hover:text-primary transition-colors">
+                Jobs
+              </Link>
+              <Link href="/feedbacks" className="text-sm font-medium hover:text-primary transition-colors">
+                Feedbacks
+              </Link>
               <Link href="/my-agent" className="text-sm font-medium hover:text-primary transition-colors">
                 My Agent
               </Link>
