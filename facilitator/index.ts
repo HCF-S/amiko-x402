@@ -24,8 +24,8 @@ config();
 const BASE_MAINNET_PRIVATE_KEY = process.env.BASE_MAINNET_PRIVATE_KEY || "";
 const BASE_SEPOLIA_PRIVATE_KEY = process.env.BASE_SEPOLIA_PRIVATE_KEY || "";
 const SVM_PRIVATE_KEY = process.env.SVM_PRIVATE_KEY || "";
-const SVM_RPC_MAINNET_URL = process.env.SVM_RPC_MAINNET_URL || "";
-const SVM_RPC_DEVNET_URL = process.env.SVM_RPC_DEVNET_URL || "";
+const SVM_MAINNET_RPC_URL = process.env.SVM_MAINNET_RPC_URL || "";
+const SVM_DEVNET_RPC_URL = process.env.SVM_DEVNET_RPC_URL || "";
 const TRUSTLESS_PROGRAM_ID = process.env.TRUSTLESS_PROGRAM_ID || "";
 const PORT = process.env.PORT || 3000;
 
@@ -36,17 +36,17 @@ if (!BASE_MAINNET_PRIVATE_KEY && !BASE_SEPOLIA_PRIVATE_KEY && !SVM_PRIVATE_KEY) 
 
 // Helper to get X402 config for a specific network
 const getX402Config = (network: string): X402Config | undefined => {
-  if (network === "solana" && SVM_RPC_MAINNET_URL) {
+  if (network === "solana" && SVM_MAINNET_RPC_URL) {
     return {
       svmConfig: {
-        rpcUrl: SVM_RPC_MAINNET_URL,
+        rpcUrl: SVM_MAINNET_RPC_URL,
       },
     };
   }
-  if (network === "solana-devnet" && (SVM_RPC_DEVNET_URL || TRUSTLESS_PROGRAM_ID)) {
+  if (network === "solana-devnet" && (SVM_DEVNET_RPC_URL || TRUSTLESS_PROGRAM_ID)) {
     return {
       svmConfig: {
-        rpcUrl: SVM_RPC_DEVNET_URL || undefined,
+        rpcUrl: SVM_DEVNET_RPC_URL || undefined,
         trustlessProgramId: TRUSTLESS_PROGRAM_ID || undefined,
       },
     };
@@ -91,8 +91,8 @@ app.get("/", (req: Request, res: Response) => {
   const networks: string[] = [];
   if (BASE_MAINNET_PRIVATE_KEY) networks.push("Base Mainnet");
   if (BASE_SEPOLIA_PRIVATE_KEY) networks.push("Base Sepolia");
-  if (SVM_PRIVATE_KEY && SVM_RPC_MAINNET_URL) networks.push("Solana Mainnet");
-  if (SVM_PRIVATE_KEY && SVM_RPC_DEVNET_URL) networks.push("Solana Devnet");
+  if (SVM_PRIVATE_KEY && SVM_MAINNET_RPC_URL) networks.push("Solana Mainnet");
+  if (SVM_PRIVATE_KEY && SVM_DEVNET_RPC_URL) networks.push("Solana Devnet");
   
   const html = getFacilitatorPage({
     networks,
@@ -126,7 +126,7 @@ app.get("/supported", async (req: Request, res: Response) => {
     }
 
     // Solana Mainnet
-    if (SVM_PRIVATE_KEY && SVM_RPC_MAINNET_URL) {
+    if (SVM_PRIVATE_KEY && SVM_MAINNET_RPC_URL) {
       const signer = await createSigner("solana", SVM_PRIVATE_KEY);
       const feePayer = isSvmSignerWallet(signer) ? signer.address : undefined;
 
@@ -141,7 +141,7 @@ app.get("/supported", async (req: Request, res: Response) => {
     }
 
     // Solana Devnet
-    if (SVM_PRIVATE_KEY && SVM_RPC_DEVNET_URL) {
+    if (SVM_PRIVATE_KEY && SVM_DEVNET_RPC_URL) {
       const signer = await createSigner("solana-devnet", SVM_PRIVATE_KEY);
       const feePayer = isSvmSignerWallet(signer) ? signer.address : undefined;
 
@@ -388,6 +388,6 @@ app.listen(PORT, () => {
   console.log(`Supported networks:`);
   if (BASE_MAINNET_PRIVATE_KEY) console.log(`  - Base Mainnet (EVM)`);
   if (BASE_SEPOLIA_PRIVATE_KEY) console.log(`  - Base Sepolia (EVM)`);
-  if (SVM_PRIVATE_KEY && SVM_RPC_MAINNET_URL) console.log(`  - Solana Mainnet (SVM)`);
-  if (SVM_PRIVATE_KEY && SVM_RPC_DEVNET_URL) console.log(`  - Solana Devnet (SVM)`);
+  if (SVM_PRIVATE_KEY && SVM_MAINNET_RPC_URL) console.log(`  - Solana Mainnet (SVM)`);
+  if (SVM_PRIVATE_KEY && SVM_DEVNET_RPC_URL) console.log(`  - Solana Devnet (SVM)`);
 });

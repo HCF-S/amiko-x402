@@ -12,8 +12,8 @@ const facilitatorUrl = process.env.FACILITATOR_URL as Resource;
 const baseMainnetAddress = process.env.BASE_MAINNET_ADDRESS as `0x${string}`;
 const baseSepoliaAddress = process.env.BASE_SEPOLIA_ADDRESS as `0x${string}`;
 const solanaAddress = process.env.SOLANA_ADDRESS as SolanaAddress;
-const svmRpcMainnetUrl = process.env.SVM_RPC_MAINNET_URL;
-const svmRpcDevnetUrl = process.env.SVM_RPC_DEVNET_URL;
+const svmRpcMainnetUrl = process.env.SVM_MAINNET_RPC_URL;
+const svmRpcDevnetUrl = process.env.SVM_DEVNET_RPC_URL;
 const PORT = Number(process.env.PORT) || 3001;
 
 if (!facilitatorUrl) {
