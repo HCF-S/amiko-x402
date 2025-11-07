@@ -20,7 +20,7 @@ const WSS_ENDPOINT = process.env.SOLANA_RPC_WSS || 'wss://api.devnet.solana.com'
 /**
  * Sync a single job record to database
  */
-async function syncJobRecord(program: Program, jobPubkey: PublicKey) {
+async function syncJobRecord(program: Program, jobPubkey: PublicKey, transaction?: string) {
   const jobId = jobPubkey.toBase58();
   console.log(`🔍 Fetching job record: ${jobId}`);
 
@@ -36,6 +36,7 @@ async function syncJobRecord(program: Program, jobPubkey: PublicKey) {
       agent_wallet: jobAccount.agentWallet.toBase58(),
       payment_amount: jobAccount.paymentAmount,
       created_at_chain: new Date((jobAccount.createdAt as BN).toNumber() * 1000),
+      transaction: transaction || undefined,
     };
 
     // Upsert job record
@@ -57,7 +58,7 @@ async function syncJobRecord(program: Program, jobPubkey: PublicKey) {
 /**
  * Sync a single feedback record to database
  */
-async function syncFeedbackRecord(program: Program, feedbackPubkey: PublicKey) {
+async function syncFeedbackRecord(program: Program, feedbackPubkey: PublicKey, transaction?: string) {
   const feedbackId = feedbackPubkey.toBase58();
   console.log(`🔍 Fetching feedback record: ${feedbackId}`);
 
@@ -86,6 +87,7 @@ async function syncFeedbackRecord(program: Program, feedbackPubkey: PublicKey) {
       rating: feedbackAccount.rating,
       comment_uri: feedbackAccount.commentUri || null,
       timestamp: new Date((feedbackAccount.timestamp as BN).toNumber() * 1000),
+      transaction: transaction || undefined,
     };
 
     // Upsert feedback record
@@ -156,14 +158,14 @@ async function startEventListener() {
       if (instruction === 'RegisterJob') {
         const emoji = '💼';
         console.log(`${emoji} Job registration detected: ${pubkey.toBase58()}`);
-        await syncJobRecord(program, pubkey);
+        await syncJobRecord(program, pubkey, logs.signature);
       }
 
       // Handle SubmitFeedback instruction
       if (instruction === 'SubmitFeedback') {
         const emoji = '⭐';
         console.log(`${emoji} Feedback submission detected: ${pubkey.toBase58()}`);
-        await syncFeedbackRecord(program, pubkey);
+        await syncFeedbackRecord(program, pubkey, logs.signature);
       }
     },
     'confirmed'

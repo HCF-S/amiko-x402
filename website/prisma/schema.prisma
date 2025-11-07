@@ -71,6 +71,8 @@ model JobRecord {
   agent_wallet     String            // Agent wallet pubkey
   payment_amount   Int               // u32 (max ~4,294 USDC with 6 decimals)
   created_at_chain DateTime          // i64 timestamp from chain
+
+  transaction      String?
   
   agent            Agent @relation(fields: [agent_wallet], references: [wallet])
   feedback         FeedbackRecord?  // One-to-one: one job can have at most one feedback
@@ -90,6 +92,8 @@ model FeedbackRecord {
   rating            Int             // u8
   comment_uri       String?         // Optional<String>
   timestamp         DateTime        // i64 timestamp from chain
+
+  transaction       String?
   
   job               JobRecord @relation(fields: [job_id], references: [id])
   agent             Agent @relation(fields: [agent_wallet], references: [wallet])
