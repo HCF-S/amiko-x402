@@ -22,6 +22,8 @@ import {
   SolanaRpcApiMainnet,
   RpcDevnet,
   RpcMainnet,
+  decompileTransactionMessage,
+  type CompiledTransactionMessage,
 } from "@solana/kit";
 import {
   decodeTransactionFromPayload,
@@ -81,21 +83,30 @@ export async function settle(
       rpcSubscriptions,
     );
 
+    // Extract job ID if this is a trustless transaction
+    const jobId = extractJobIdFromTransaction(signedTransaction);
+
     return {
       success,
       errorReason,
       payer,
       transaction: signature,
       network: payload.network,
+      jobId,
     };
   } catch (error) {
     console.error("Unexpected error during transaction settlement:", error);
+    
+    // Extract job ID even on error for potential retry scenarios
+    const jobId = extractJobIdFromTransaction(signedTransaction);
+    
     return {
       success: false,
       errorReason: "unexpected_settle_error",
       network: payload.network,
       transaction: getSignatureFromTransaction(signedTransaction),
       payer,
+      jobId,
     };
   }
 }
@@ -253,5 +264,45 @@ function assertTransactionFullySigned(transaction: Transaction): void {
 
   if (missingAddresses.length > 0) {
     throw new Error(`transaction_signer_missing_signatures:${missingAddresses.join(",")}`);
+  }
+}
+
+/**
+ * Extracts the job ID from a trustless transaction.
+ * The job ID is the first account (job_record PDA) in the register_job instruction.
+ *
+ * @param transaction - The signed transaction
+ * @returns The job ID (job_record PDA address) if found, undefined otherwise
+ */
+function extractJobIdFromTransaction(transaction: Transaction): string | undefined {
+  try {
+    // Decode the transaction message
+    const compiledMessage = getCompiledTransactionMessageDecoder().decode(
+      transaction.messageBytes
+    ) as CompiledTransactionMessage;
+    
+    // Decompile to get instructions
+    const decompiledMessage = decompileTransactionMessage(compiledMessage);
+    
+    // The register_job instruction discriminator (first 8 bytes of sha256("global:register_job"))
+    const REGISTER_JOB_DISCRIMINATOR = new Uint8Array([0x57, 0xd5, 0xb1, 0xff, 0x83, 0x11, 0xb2, 0x2d]);
+    
+    // Find the register_job instruction (should be the last instruction)
+    const registerJobIx = decompiledMessage.instructions.find((ix) => {
+      if (!ix.data || ix.data.length < 8) return false;
+      const discriminator = new Uint8Array(ix.data.slice(0, 8));
+      return discriminator.every((byte, index) => byte === REGISTER_JOB_DISCRIMINATOR[index]);
+    });
+    
+    if (!registerJobIx || !registerJobIx.accounts || registerJobIx.accounts.length === 0) {
+      return undefined;
+    }
+    
+    // The first account in the register_job instruction is the job_record PDA (the job ID)
+    const jobRecordAccount = registerJobIx.accounts[0];
+    return jobRecordAccount.address;
+  } catch (error) {
+    console.error("Failed to extract job ID from transaction:", error);
+    return undefined;
   }
 }

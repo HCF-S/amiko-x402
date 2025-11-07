@@ -315,6 +315,11 @@ export function paymentMiddleware(
       if (settlement.success) {
         const responseHeader = settleResponseHeader(settlement);
         res.headers.set("X-PAYMENT-RESPONSE", responseHeader);
+        
+        // Set X-JOB-ID header if job ID is present (trustless mode)
+        if (settlement.jobId) {
+          res.headers.set("X-JOB-ID", settlement.jobId);
+        }
       } else {
         throw new Error(settlement.errorReason);
       }

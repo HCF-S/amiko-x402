@@ -204,6 +204,7 @@ export const SettleResponseSchema = z.object({
   payer: EvmOrSvmAddress.optional(),
   transaction: z.string().regex(MixedAddressRegex),
   network: NetworkSchema,
+  jobId: z.string().optional(), // Job ID for trustless mode (Solana PDA address)
 });
 export type SettleResponse = z.infer<typeof SettleResponseSchema>;
 
