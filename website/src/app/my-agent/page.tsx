@@ -37,7 +37,7 @@ export default function MyAgentPage() {
   const [uploading, setUploading] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [success, setSuccess] = useState<{ message: string; link?: string } | null>(null);
 
   // Validate metadata format
   const validateMetadata = (metadataString: string): { valid: boolean; error?: string } => {
@@ -152,7 +152,7 @@ export default function MyAgentPage() {
 
   const handleUpload = async () => {
     setError('');
-    setSuccess('');
+    setSuccess(null);
 
     // Validate metadata before uploading
     const validation = validateMetadata(metadata);
@@ -180,7 +180,7 @@ export default function MyAgentPage() {
 
       setMetadataUrl(data.ipfsUrl);
       setOriginalMetadata(metadata); // Update original after successful upload
-      setSuccess(`Uploaded to IPFS: ${data.ipfsHash}`);
+      setSuccess({ message: `Uploaded to IPFS: ${data.ipfsHash}` });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to upload');
     } finally {
@@ -214,7 +214,13 @@ export default function MyAgentPage() {
       console.log('✅ Registration successful!');
       console.log('Transaction signature:', signature);
       
-      setSuccess(`Agent registered successfully! Transaction: ${signature}`);
+      const network = process.env.NEXT_PUBLIC_SOLANA_NETWORK || 'devnet';
+      const clusterParam = network === 'mainnet-beta' ? '' : `?cluster=${network}`;
+      const explorerUrl = `https://explorer.solana.com/tx/${signature}${clusterParam}`;
+      setSuccess({ 
+        message: 'Agent registered successfully!', 
+        link: explorerUrl 
+      });
       
       // Clear form
       setMetadata('{\n  "name": "",\n  "description": "",\n  "image": ""\n}');
@@ -245,7 +251,7 @@ export default function MyAgentPage() {
     }
 
     setError('');
-    setSuccess('');
+    setSuccess(null);
     setUpdating(true);
 
     try {
@@ -258,7 +264,13 @@ export default function MyAgentPage() {
       console.log('✅ Update successful!');
       console.log('Transaction signature:', signature);
       
-      setSuccess(`Agent updated successfully! Transaction: ${signature}`);
+      const network = process.env.NEXT_PUBLIC_SOLANA_NETWORK || 'devnet';
+      const clusterParam = network === 'mainnet-beta' ? '' : `?cluster=${network}`;
+      const explorerUrl = `https://explorer.solana.com/tx/${signature}${clusterParam}`;
+      setSuccess({ 
+        message: 'Agent updated successfully!', 
+        link: explorerUrl 
+      });
       
       // Refresh agent account data
       const [agentPDA] = getAgentPDA(publicKey);
@@ -482,7 +494,22 @@ export default function MyAgentPage() {
             {success && (
               <Card className="border-primary">
                 <CardContent className="pt-6">
-                  <p className="text-primary text-sm">{success}</p>
+                  <p className="text-primary text-sm">
+                    {success.message}
+                    {success.link && (
+                      <>
+                        {' '}
+                        <a 
+                          href={success.link} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="underline hover:text-primary/80"
+                        >
+                          View on Explorer →
+                        </a>
+                      </>
+                    )}
+                  </p>
                 </CardContent>
               </Card>
             )}
