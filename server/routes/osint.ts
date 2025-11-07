@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { paymentMiddleware, type Resource, type SolanaAddress } from "x402-hono";
+import { paymentMiddleware, type Resource, type SolanaAddress, type Network } from "x402-hono";
 
 type PaymentConfig = {
   address: `0x${string}` | SolanaAddress;
@@ -37,7 +37,7 @@ export function createOsintRoute(config: OsintConfig) {
         {
           "GET /osint/*": {
             price: "$1.00",
-            network: config.solanaPayment.network,
+            network: config.solanaPayment.network as Network,
           },
         },
         { 
@@ -63,7 +63,7 @@ export function createOsintRoute(config: OsintConfig) {
         {
           "GET /base/osint/*": {
             price: "$1.00",
-            network: config.basePayment.network,
+            network: config.basePayment.network as Network,
           },
         },
         { url: config.basePayment.facilitatorUrl }

@@ -243,6 +243,8 @@ async function syncAgentAccount(program: Program, agentPubkey: PublicKey) {
         total_weight: accountData.totalWeight.toString(),
         avg_rating: accountData.avgRating,
         last_update: accountData.lastUpdate ? new Date(accountData.lastUpdate * 1000) : null,
+        job_count: accountData.jobCount || 0,
+        feedback_count: accountData.feedbackCount || 0,
       },
       update: {
         metadata_uri: accountData.metadataUri || null,
@@ -254,6 +256,8 @@ async function syncAgentAccount(program: Program, agentPubkey: PublicKey) {
         total_weight: accountData.totalWeight.toString(),
         avg_rating: accountData.avgRating,
         last_update: accountData.lastUpdate ? new Date(accountData.lastUpdate * 1000) : null,
+        job_count: accountData.jobCount || 0,
+        feedback_count: accountData.feedbackCount || 0,
         updated_at: new Date(),
       },
     });

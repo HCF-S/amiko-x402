@@ -27,8 +27,8 @@ import { useFacilitator } from "x402/verify";
 
 // Trustless program IDs for different networks
 const TRUSTLESS_PROGRAM_IDS = {
-  "solana": "CtZrqYPSzPipUnxB55hBzCHrQxtBfWPujyrnDBDeWpWe", // Mainnet
-  "solana-devnet": "CtZrqYPSzPipUnxB55hBzCHrQxtBfWPujyrnDBDeWpWe", // Devnet (same for now)
+  "solana": "GPd4z3N25UfjrkgfgSxsjoyG7gwYF8Fo7Emvp9TKsDeW", // Mainnet
+  "solana-devnet": "GPd4z3N25UfjrkgfgSxsjoyG7gwYF8Fo7Emvp9TKsDeW", // Devnet (same for now)
 } as const;
 
 /**

@@ -60,7 +60,7 @@ The script will:
 ```
 🚀 Starting Trustless Program Event Listener...
 📡 RPC Endpoint: https://api.devnet.solana.com
-📋 Program ID: CtZrqYPSzPipUnxB55hBzCHrQxtBfWPujyrnDBDeWpWe
+📋 Program ID: GPd4z3N25UfjrkgfgSxsjoyG7gwYF8Fo7Emvp9TKsDeW
 👂 Listening for events...
 
 📝 AgentRegistered: 7xK8...9mPq

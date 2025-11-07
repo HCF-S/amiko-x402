@@ -453,10 +453,6 @@ pub struct SubmitFeedback<'info> {
     )]
     pub feedback_record: Account<'info, FeedbackRecord>,
     
-    #[account(
-        seeds = [b"job", proof_of_payment.key().as_ref()],
-        bump
-    )]
     pub job_record: Account<'info, JobRecord>,
     
     #[account(
@@ -468,9 +464,6 @@ pub struct SubmitFeedback<'info> {
     
     #[account(mut)]
     pub client_wallet: Signer<'info>,
-    
-    /// CHECK: Payment transaction reference for validation
-    pub proof_of_payment: UncheckedAccount<'info>,
     
     pub system_program: Program<'info, System>,
 }

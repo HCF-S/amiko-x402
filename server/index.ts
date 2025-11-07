@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import { config } from "dotenv";
 import { type Resource, type SolanaAddress } from "x402-hono";
-import { customPaywallMiddleware } from "./middleware/customPaywall.js";
+
 import { createHealthRoute } from "./routes/health.js";
 import { createTimeRoutes } from "./routes/time.js";
 import { createOsintRoute } from "./routes/osint.js";

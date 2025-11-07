@@ -18,6 +18,8 @@ export async function GET() {
         auto_created: true,
         avg_rating: true,
         total_weight: true,
+        job_count: true,
+        feedback_count: true,
         created_at: true,
         updated_at: true,
       },

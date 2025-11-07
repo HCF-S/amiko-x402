@@ -30,6 +30,8 @@ model Agent {
   total_weight Decimal @default(0) @db.Decimal(39, 0)           // u128 equivalent
   avg_rating Float @default(0)                                   // f32
   last_update DateTime?
+  job_count Int @default(0)                                      // u32
+  feedback_count Int @default(0)                                 // u32
 
   services AgentServices[]
   jobs          JobRecord[]
@@ -67,9 +69,8 @@ model JobRecord {
   id               String @id        // Pubkey from chain (PDA)
   client_wallet    String            // Client wallet pubkey
   agent_wallet     String            // Agent wallet pubkey
-  payment_tx       String            // Pubkey (proof_of_payment)
-  payment_amount   Decimal @db.Decimal(20, 0)  // u64
-  created_at_chain DateTime         // i64 timestamp from chain
+  payment_amount   Int               // u32 (max ~4,294 USDC with 6 decimals)
+  created_at_chain DateTime          // i64 timestamp from chain
   
   agent            Agent @relation(fields: [agent_wallet], references: [wallet])
   feedback         FeedbackRecord?  // One-to-one: one job can have at most one feedback
@@ -84,12 +85,10 @@ model JobRecord {
 model FeedbackRecord {
   id                String @id      // Pubkey from chain (PDA)
   job_id            String @unique  // One-to-one: unique job_id ensures one feedback per job
-  client_wallet     String          // Client wallet pubkey
-  agent_wallet      String          // Agent wallet pubkey
+  client_wallet     String          // Denormalized from JobRecord for easier querying
+  agent_wallet      String          // Denormalized from JobRecord for easier querying
   rating            Int             // u8
   comment_uri       String?         // Optional<String>
-  proof_of_payment  String          // Pubkey
-  payment_amount    Decimal @db.Decimal(20, 0)  // u64
   timestamp         DateTime        // i64 timestamp from chain
   
   job               JobRecord @relation(fields: [job_id], references: [id])

@@ -241,7 +241,7 @@ amiko-x402/
 ```bash
 # Solana
 NEXT_PUBLIC_SOLANA_NETWORK=devnet
-NEXT_PUBLIC_PROGRAM_ID=CtZrqYPSzPipUnxB55hBzCHrQxtBfWPujyrnDBDeWpWe
+NEXT_PUBLIC_PROGRAM_ID=GPd4z3N25UfjrkgfgSxsjoyG7gwYF8Fo7Emvp9TKsDeW
 
 # IPFS (Pinata)
 PINATA_API_KEY=your_api_key

@@ -128,26 +128,39 @@ app.get("/verify", (req: Request, res: Response) => {
 // Verify payment
 app.post("/verify", async (req: Request, res: Response) => {
   try {
+    console.log("\n=== VERIFY REQUEST ===");
     const body: VerifyRequest = req.body;
+    console.log("Network:", body.paymentRequirements?.network);
+    console.log("Scheme:", body.paymentRequirements?.scheme);
+    
     const paymentRequirements = PaymentRequirementsSchema.parse(body.paymentRequirements);
     const paymentPayload = PaymentPayloadSchema.parse(body.paymentPayload);
+    
+    console.log("Payment Requirements:", JSON.stringify(paymentRequirements, null, 2));
+    console.log("Payment Payload:", JSON.stringify(paymentPayload, null, 2));
 
     // Use the correct client/signer based on the requested network
     // SVM verify requires a Signer because it signs & simulates the txn
     let client: Signer | ConnectedClient;
     if (SupportedEVMNetworks.includes(paymentRequirements.network)) {
+      console.log("Using EVM client");
       client = createConnectedClient(paymentRequirements.network);
     } else if (SupportedSVMNetworks.includes(paymentRequirements.network)) {
       if (!SVM_PRIVATE_KEY) {
         throw new Error("SVM_PRIVATE_KEY not configured");
       }
+      console.log("Using SVM signer");
       client = await createSigner(paymentRequirements.network, SVM_PRIVATE_KEY);
     } else {
       throw new Error(`Unsupported network: ${paymentRequirements.network}`);
     }
 
     // Verify payment
+    console.log("Calling verify...");
     const valid = await verify(client, paymentPayload, paymentRequirements, x402Config);
+    console.log("Verify result:", JSON.stringify(valid, null, 2));
+    console.log("=== VERIFY COMPLETE ===\n");
+    
     res.json(valid);
   } catch (error) {
     console.error("Verify error:", error);
@@ -174,9 +187,16 @@ app.get("/settle", (req: Request, res: Response) => {
 // Settle payment
 app.post("/settle", async (req: Request, res: Response) => {
   try {
+    console.log("\n=== SETTLE REQUEST ===");
     const body: SettleRequest = req.body;
+    console.log("Network:", body.paymentRequirements?.network);
+    console.log("Scheme:", body.paymentRequirements?.scheme);
+    
     const paymentRequirements = PaymentRequirementsSchema.parse(body.paymentRequirements);
     const paymentPayload = PaymentPayloadSchema.parse(body.paymentPayload);
+    
+    console.log("Payment Requirements:", JSON.stringify(paymentRequirements, null, 2));
+    console.log("Payment Payload:", JSON.stringify(paymentPayload, null, 2));
 
     // Use the correct private key based on the requested network
     let signer: Signer;
@@ -184,18 +204,24 @@ app.post("/settle", async (req: Request, res: Response) => {
       if (!EVM_PRIVATE_KEY) {
         throw new Error("EVM_PRIVATE_KEY not configured");
       }
+      console.log("Using EVM signer");
       signer = await createSigner(paymentRequirements.network, EVM_PRIVATE_KEY);
     } else if (SupportedSVMNetworks.includes(paymentRequirements.network)) {
       if (!SVM_PRIVATE_KEY) {
         throw new Error("SVM_PRIVATE_KEY not configured");
       }
+      console.log("Using SVM signer");
       signer = await createSigner(paymentRequirements.network, SVM_PRIVATE_KEY);
     } else {
       throw new Error(`Unsupported network: ${paymentRequirements.network}`);
     }
 
     // Settle payment
+    console.log("Calling settle...");
     const response = await settle(signer, paymentPayload, paymentRequirements, x402Config);
+    console.log("Settle result:", JSON.stringify(response, null, 2));
+    console.log("=== SETTLE COMPLETE ===\n");
+    
     res.json(response);
   } catch (error) {
     console.error("Settle error:", error);

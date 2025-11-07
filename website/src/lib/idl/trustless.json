@@ -1,5 +1,5 @@
 {
-  "address": "CtZrqYPSzPipUnxB55hBzCHrQxtBfWPujyrnDBDeWpWe",
+  "address": "GPd4z3N25UfjrkgfgSxsjoyG7gwYF8Fo7Emvp9TKsDeW",
   "metadata": {
     "name": "trustless",
     "version": "0.1.0",
@@ -116,7 +116,7 @@
     {
       "name": "register_job",
       "docs": [
-        "Register a job (called by x402 facilitator)",
+        "Register a job (called by x402 client)",
         "Supports lazy agent creation",
         "Verifies USDC payment from client to agent by checking transaction instructions"
       ],
@@ -154,8 +154,7 @@
         {
           "name": "agent_account",
           "docs": [
-            "Agent account - can be either existing or newly created",
-            "Uses zero_copy pattern to avoid init/mut conflict"
+            "Agent account - can be either existing or newly created"
           ],
           "writable": true,
           "pda": {
@@ -255,30 +254,13 @@
               },
               {
                 "kind": "account",
-                "path": "job_record.job_id",
-                "account": "JobRecord"
+                "path": "job_record"
               }
             ]
           }
         },
         {
-          "name": "job_record",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  106,
-                  111,
-                  98
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "proof_of_payment"
-              }
-            ]
-          }
+          "name": "job_record"
         },
         {
           "name": "agent_account",
@@ -307,9 +289,6 @@
           "name": "client_wallet",
           "writable": true,
           "signer": true
-        },
-        {
-          "name": "proof_of_payment"
         },
         {
           "name": "system_program",
@@ -538,48 +517,58 @@
     },
     {
       "code": 6003,
-      "name": "InvalidProofOfPayment",
-      "msg": "Proof of payment does not match job record"
-    },
-    {
-      "code": 6004,
       "name": "TokenMintMismatch",
       "msg": "Token mint mismatch between client and agent accounts"
     },
     {
-      "code": 6005,
+      "code": 6004,
       "name": "InvalidClientTokenAccount",
       "msg": "Client token account owner does not match client"
     },
     {
-      "code": 6006,
+      "code": 6005,
       "name": "InvalidAgentTokenAccount",
       "msg": "Agent token account owner does not match agent"
     },
     {
+      "code": 6006,
+      "name": "InvalidTransferProgramId",
+      "msg": "Transfer instruction program ID does not match token program"
+    },
+    {
       "code": 6007,
-      "name": "InvalidTransferInstruction",
-      "msg": "Invalid transfer instruction"
+      "name": "InvalidTransferDiscriminator",
+      "msg": "Transfer instruction discriminator is invalid (expected SPL Token Transfer)"
     },
     {
       "code": 6008,
+      "name": "InvalidTransferAccounts",
+      "msg": "Transfer instruction does not have enough accounts"
+    },
+    {
+      "code": 6009,
       "name": "InvalidTransferAmount",
       "msg": "Invalid transfer amount format"
     },
     {
-      "code": 6009,
+      "code": 6010,
       "name": "TransferSourceMismatch",
       "msg": "Transfer source account mismatch"
     },
     {
-      "code": 6010,
+      "code": 6011,
       "name": "TransferDestinationMismatch",
       "msg": "Transfer destination account mismatch"
     },
     {
-      "code": 6011,
+      "code": 6012,
       "name": "TransferAuthorityMismatch",
       "msg": "Transfer authority mismatch"
+    },
+    {
+      "code": 6013,
+      "name": "PaymentAmountTooLarge",
+      "msg": "Payment amount too large (max ~4,294 USDC)"
     }
   ],
   "types": [
@@ -623,6 +612,14 @@
           {
             "name": "last_update",
             "type": "i64"
+          },
+          {
+            "name": "job_count",
+            "type": "u32"
+          },
+          {
+            "name": "feedback_count",
+            "type": "u32"
           }
         ]
       }
@@ -689,19 +686,7 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "feedback_id",
-            "type": "pubkey"
-          },
-          {
             "name": "job_id",
-            "type": "pubkey"
-          },
-          {
-            "name": "client_wallet",
-            "type": "pubkey"
-          },
-          {
-            "name": "agent_wallet",
             "type": "pubkey"
           },
           {
@@ -713,14 +698,6 @@
             "type": {
               "option": "string"
             }
-          },
-          {
-            "name": "proof_of_payment",
-            "type": "pubkey"
-          },
-          {
-            "name": "payment_amount",
-            "type": "u64"
           },
           {
             "name": "timestamp",
@@ -752,7 +729,7 @@
           },
           {
             "name": "payment_amount",
-            "type": "u64"
+            "type": "u32"
           }
         ]
       }
@@ -763,10 +740,6 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "job_id",
-            "type": "pubkey"
-          },
-          {
             "name": "client_wallet",
             "type": "pubkey"
           },
@@ -775,12 +748,8 @@
             "type": "pubkey"
           },
           {
-            "name": "payment_tx",
-            "type": "pubkey"
-          },
-          {
             "name": "payment_amount",
-            "type": "u64"
+            "type": "u32"
           },
           {
             "name": "created_at",
@@ -808,7 +777,7 @@
           },
           {
             "name": "payment_amount",
-            "type": "u64"
+            "type": "u32"
           }
         ]
       }

@@ -117,24 +117,20 @@ async function createTransferTransactionMessage(
   const feePayer = paymentRequirements.extra?.feePayer as Address;
   const txToSimulate = pipe(
     createTransactionMessage({ version: 0 }),
+    tx => prependTransactionMessageInstruction(
+      getSetComputeUnitLimitInstruction({ units: 200_000 }), // default limit
+      tx,
+    ),
     tx => setTransactionMessageComputeUnitPrice(1, tx), // 1 microlamport priority fee
     tx => setTransactionMessageFeePayer(feePayer, tx),
     tx => appendTransactionMessageInstructions(transferInstructions, tx),
   );
 
-  // estimate the compute budget limit (gas limit)
-  const estimateComputeUnitLimit = estimateComputeUnitLimitFactory({ rpc });
-  const estimatedUnits = await estimateComputeUnitLimit(txToSimulate);
-
-  // finalize the transaction message by adding the compute budget limit and blockhash
+  // finalize the transaction message by adding the blockhash
+  // Note: compute unit limit is already set with default 200k units
   const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
   const tx = pipe(
     txToSimulate,
-    tx =>
-      prependTransactionMessageInstruction(
-        getSetComputeUnitLimitInstruction({ units: estimatedUnits }),
-        tx,
-      ),
     tx => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
   );
 
@@ -195,11 +191,12 @@ async function createAtaAndTransferInstructions(
   if (config?.svmConfig?.trustlessProgramId) {
     // Calculate the transfer instruction index in the final transaction:
     // Final transaction order:
-    // 0: SetComputeUnitLimit + SetComputeUnitPrice (combined into one instruction)
-    // 1+: Our instructions (ATA?, Transfer, RegisterJob)
+    // 0: SetComputeUnitPrice (compute budget instruction)
+    // 1: SetComputeUnitLimit (compute budget instruction)
+    // 2+: Our instructions (ATA?, Transfer, RegisterJob)
     //
     // Transfer is the last instruction BEFORE RegisterJob
-    const computeBudgetInstructionCount = 1;
+    const computeBudgetInstructionCount = 2;
     const transferInstructionIndex = computeBudgetInstructionCount + (instructions.length - 1);
     
     const registerJobIx = await createRegisterJobInstruction(

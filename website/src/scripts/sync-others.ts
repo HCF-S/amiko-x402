@@ -30,11 +30,10 @@ async function syncJobRecord(program: Program, jobPubkey: PublicKey) {
 
     // Convert BN and Pubkey to strings
     const jobData = {
-      id: jobAccount.jobId.toBase58(),
+      id: jobPubkey.toBase58(),
       client_wallet: jobAccount.clientWallet.toBase58(),
       agent_wallet: jobAccount.agentWallet.toBase58(),
-      payment_tx: jobAccount.paymentTx.toBase58(),
-      payment_amount: jobAccount.paymentAmount.toString(),
+      payment_amount: jobAccount.paymentAmount,
       created_at_chain: new Date((jobAccount.createdAt as BN).toNumber() * 1000),
     };
 
@@ -65,17 +64,26 @@ async function syncFeedbackRecord(program: Program, feedbackPubkey: PublicKey) {
     // Fetch feedback account from chain
     // @ts-ignore - Anchor types
     const feedbackAccount = await program.account.feedbackRecord.fetch(feedbackPubkey);
+    const jobId = feedbackAccount.jobId.toBase58();
 
-    // Convert BN and Pubkey to strings
+    // Fetch the related job record to get client_wallet and agent_wallet
+    const jobRecord = await prisma.jobRecord.findUnique({
+      where: { id: jobId },
+    });
+
+    if (!jobRecord) {
+      console.error(`❌ Job record not found: ${jobId}. Skipping feedback sync.`);
+      return;
+    }
+
+    // Convert BN and Pubkey to strings, denormalize client/agent from JobRecord
     const feedbackData = {
-      id: feedbackAccount.feedbackId.toBase58(),
-      job_id: feedbackAccount.jobId.toBase58(),
-      client_wallet: feedbackAccount.clientWallet.toBase58(),
-      agent_wallet: feedbackAccount.agentWallet.toBase58(),
+      id: feedbackPubkey.toBase58(),
+      job_id: jobId,
+      client_wallet: jobRecord.client_wallet,
+      agent_wallet: jobRecord.agent_wallet,
       rating: feedbackAccount.rating,
       comment_uri: feedbackAccount.commentUri || null,
-      proof_of_payment: feedbackAccount.proofOfPayment.toBase58(),
-      payment_amount: feedbackAccount.paymentAmount.toString(),
       timestamp: new Date((feedbackAccount.timestamp as BN).toNumber() * 1000),
     };
 

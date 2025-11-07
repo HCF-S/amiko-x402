@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { paymentMiddleware, type Resource, type SolanaAddress } from "x402-hono";
+import { paymentMiddleware, type Resource, type SolanaAddress, type Network } from "x402-hono";
 
 type PaymentConfig = {
   address: `0x${string}` | SolanaAddress;
@@ -36,7 +36,7 @@ export function createTimeRoutes(config: TimeConfig) {
         {
           "GET /time": {
             price: "$0.01",
-            network: config.solanaPayment.network,
+            network: config.solanaPayment.network as Network,
           },
         },
         {
@@ -61,7 +61,7 @@ export function createTimeRoutes(config: TimeConfig) {
         {
           "GET /base/time": {
             price: "$0.01",
-            network: config.basePayment.network,
+            network: config.basePayment.network as Network,
           },
         },
         { url: config.basePayment.facilitatorUrl }
