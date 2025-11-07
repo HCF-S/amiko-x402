@@ -130,7 +130,7 @@ async function syncAgentEndpoints(agentWallet: string, metadataJson: any) {
 /**
  * Fetch agent account and sync to database
  */
-async function syncAgentAccount(program: Program, agentPubkey: PublicKey) {
+export async function syncAgentAccount(program: Program, agentPubkey: PublicKey) {
   const walletAddress = agentPubkey.toBase58();
   console.log(`🔍 Fetching agent account: ${walletAddress}`);
 

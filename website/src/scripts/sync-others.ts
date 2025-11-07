@@ -9,6 +9,8 @@ import { Program, AnchorProvider, Wallet, BN } from '@coral-xyz/anchor';
 import { PrismaClient } from '@prisma/client';
 import idl from '../lib/idl/trustless.json';
 import { matchInstructionsGetData } from '../lib/log-parser';
+import { syncAgentAccount } from './sync-agents';
+import { getFeedbackPDA } from '../lib/program';
 
 const prisma = new PrismaClient();
 
@@ -50,6 +52,10 @@ async function syncJobRecord(program: Program, jobPubkey: PublicKey, transaction
     });
 
     console.log(`✅ Synced job: ${jobData.id}`);
+    
+    // Sync agent account to update job_count
+    console.log(`🔄 Updating agent stats for: ${jobData.agent_wallet}`);
+    await syncAgentAccount(program, jobAccount.agentWallet);
   } catch (error) {
     console.error(`❌ Error syncing job ${jobId}:`, error);
   }
@@ -103,6 +109,11 @@ async function syncFeedbackRecord(program: Program, feedbackPubkey: PublicKey, t
     });
 
     console.log(`✅ Synced feedback for job: ${feedbackData.job_id} (rating: ${feedbackData.rating})`);
+    
+    // Sync agent account to update feedback_count and rating stats
+    console.log(`🔄 Updating agent stats for: ${feedbackData.agent_wallet}`);
+    const agentPubkey = new PublicKey(feedbackData.agent_wallet);
+    await syncAgentAccount(program, agentPubkey);
   } catch (error) {
     console.error(`❌ Error syncing feedback ${feedbackId}:`, error);
   }
@@ -168,10 +179,7 @@ async function startEventListener() {
         
         // The pubkey from logs is the job record address
         // Derive the feedback PDA from the job record
-        const [feedbackPDA] = PublicKey.findProgramAddressSync(
-          [Buffer.from('feedback'), pubkey.toBuffer()],
-          PROGRAM_ID
-        );
+        const [feedbackPDA] = getFeedbackPDA(pubkey);
         
         console.log(`🔍 Derived feedback PDA: ${feedbackPDA.toBase58()}`);
         await syncFeedbackRecord(program, feedbackPDA, logs.signature);
