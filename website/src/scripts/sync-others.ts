@@ -8,6 +8,7 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import { Program, AnchorProvider, Wallet, BN } from '@coral-xyz/anchor';
 import { PrismaClient } from '@prisma/client';
 import idl from '../lib/idl/trustless.json';
+import { matchInstructionsGetData } from '../lib/log-parser';
 
 const prisma = new PrismaClient();
 
@@ -105,72 +106,6 @@ async function syncFeedbackRecord(program: Program, feedbackPubkey: PublicKey) {
   }
 }
 
-/**
- * Detect instruction type from logs
- */
-function detectInstructionType(logs: string[]): string | null {
-  for (const log of logs) {
-    if (log.includes('Program log: Instruction:')) {
-      const instruction = log.split('Program log: Instruction:')[1]?.trim();
-      return instruction;
-    }
-  }
-  return null;
-}
-
-/**
- * Extract account address from instruction invocation logs
- */
-function extractAccountFromLogs(logs: string[], instruction: string): PublicKey | null {
-  try {
-    // Look for the program invocation with account addresses
-    for (let i = 0; i < logs.length; i++) {
-      const log = logs[i];
-      
-      // Find the invoke line for our program
-      if (log.includes(`Program ${PROGRAM_ID.toBase58()} invoke`)) {
-        // The next few lines contain account addresses
-        // Format: "Program log: Instruction: RegisterJob" or "Program log: Instruction: SubmitFeedback"
-        // Look for account addresses in subsequent lines
-        
-        // Try to find account addresses in the invoke context
-        for (let j = i; j < Math.min(i + 10, logs.length); j++) {
-          const contextLog = logs[j];
-          
-          // Look for base58 encoded addresses (32-44 characters)
-          const matches = contextLog.match(/[1-9A-HJ-NP-Za-km-z]{32,44}/g);
-          if (matches && matches.length > 0) {
-            // Filter out the program ID itself
-            const accounts = matches
-              .filter(addr => addr !== PROGRAM_ID.toBase58())
-              .map(addr => {
-                try {
-                  return new PublicKey(addr);
-                } catch {
-                  return null;
-                }
-              })
-              .filter((pk): pk is PublicKey => pk !== null);
-            
-            if (accounts.length > 0) {
-              // For RegisterJob: job_record should be one of the first accounts
-              // For SubmitFeedback: feedback_record should be one of the first accounts
-              console.log(`🔍 Found ${accounts.length} account(s) in instruction`);
-              
-              // Return the first account (should be job_record or feedback_record)
-              const accountPubkey = accounts[0];
-              console.log(`🔍 Extracted account: ${accountPubkey.toBase58()}`);
-              return accountPubkey;
-            }
-          }
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error extracting account from logs:', error);
-  }
-  return null;
-}
 
 /**
  * Start listening to program events
@@ -206,35 +141,29 @@ async function startEventListener() {
     PROGRAM_ID,
     async (logs) => {
       console.log('📋 Program log received');
+      console.log(`📝 Transaction: ${logs.signature}`);
       
-      // Detect instruction type
-      const instruction = detectInstructionType(logs.logs);
+      // Extract record from logs
+      const result = matchInstructionsGetData(logs.logs, ['RegisterJob', 'SubmitFeedback']);
       
-      if (!instruction) {
+      if (!result) {
         return; // Skip if no instruction detected
       }
 
-      console.log(`📝 Transaction: ${logs.signature}`);
-      console.log(`📋 Instruction: ${instruction}`);
+      const { pubkey, instruction } = result;
 
       // Handle RegisterJob instruction
       if (instruction === 'RegisterJob') {
-        const jobPubkey = extractAccountFromLogs(logs.logs, instruction);
-        if (jobPubkey) {
-          const emoji = '💼';
-          console.log(`${emoji} Job registration detected: ${jobPubkey.toBase58()}`);
-          await syncJobRecord(program, jobPubkey);
-        }
+        const emoji = '💼';
+        console.log(`${emoji} Job registration detected: ${pubkey.toBase58()}`);
+        await syncJobRecord(program, pubkey);
       }
 
       // Handle SubmitFeedback instruction
       if (instruction === 'SubmitFeedback') {
-        const feedbackPubkey = extractAccountFromLogs(logs.logs, instruction);
-        if (feedbackPubkey) {
-          const emoji = '⭐';
-          console.log(`${emoji} Feedback submission detected: ${feedbackPubkey.toBase58()}`);
-          await syncFeedbackRecord(program, feedbackPubkey);
-        }
+        const emoji = '⭐';
+        console.log(`${emoji} Feedback submission detected: ${pubkey.toBase58()}`);
+        await syncFeedbackRecord(program, pubkey);
       }
     },
     'confirmed'

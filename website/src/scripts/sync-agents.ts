@@ -9,6 +9,7 @@ import { Program, AnchorProvider, Wallet, BN } from '@coral-xyz/anchor';
 import { PrismaClient } from '@prisma/client';
 import idl from '../lib/idl/trustless.json';
 import { getAgentPDA } from '../lib/program';
+import { matchInstructionsGetData } from '../lib/log-parser';
 
 const prisma = new PrismaClient();
 
@@ -32,79 +33,6 @@ async function fetchMetadata(uri: string): Promise<any> {
   return null;
 }
 
-/**
- * Detect instruction type from logs
- */
-function detectInstructionType(logs: string[]): string | null {
-  for (const log of logs) {
-    if (log.includes('Program log: Instruction:')) {
-      const instruction = log.split('Program log: Instruction:')[1]?.trim();
-      return instruction;
-    }
-  }
-  return null;
-}
-
-/**
- * Extract agent address from logs
- */
-function extractAgentFromLogs(logs: string[]): { agentPubkey: PublicKey; instruction: string | null } | null {
-  try {
-    // Detect instruction type
-    const instruction = detectInstructionType(logs);
-    
-    // Look for "Program data:" which contains the event data
-    for (const log of logs) {
-      if (log.includes('Program data:')) {
-        const base64Data = log.split('Program data: ')[1]?.trim();
-        if (!base64Data) continue;
-
-        try {
-          // Decode base64
-          const buffer = Buffer.from(base64Data, 'base64');
-          
-          // Event structure: 8 bytes discriminator + 32 bytes agent pubkey + rest
-          // Skip the first 8 bytes (event discriminator) and read the next 32 bytes (agent pubkey)
-          if (buffer.length >= 40) {
-            const agentBytes = buffer.slice(8, 40);
-            const agentPubkey = new PublicKey(agentBytes);
-            
-            console.log(`🔍 Extracted agent from event data: ${agentPubkey.toBase58()}`);
-            if (instruction) {
-              console.log(`📝 Instruction: ${instruction}`);
-            }
-            return { agentPubkey, instruction };
-          }
-        } catch (error) {
-          console.error('Error decoding Program data:', error);
-          continue;
-        }
-      }
-    }
-    
-    // Fallback: try to find any valid base58 pubkey in logs
-    for (const log of logs) {
-      const pubkeyMatch = log.match(/[1-9A-HJ-NP-Za-km-z]{43,44}/);
-      if (pubkeyMatch) {
-        try {
-          const pubkey = new PublicKey(pubkeyMatch[0]);
-          if (PublicKey.isOnCurve(pubkey.toBytes())) {
-            console.log(`🔍 Extracted agent from log text: ${pubkey.toBase58()}`);
-            if (instruction) {
-              console.log(`📝 Instruction: ${instruction}`);
-            }
-            return { agentPubkey: pubkey, instruction };
-          }
-        } catch {
-          continue;
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error extracting agent from logs:', error);
-  }
-  return null;
-}
 
 /**
  * Fetch x402 payment info from endpoint
@@ -307,13 +235,12 @@ async function startEventListener() {
     PROGRAM_ID,
     async (logs) => {
       console.log('📋 Program log received');
-      console.log('logs', logs);
       
       // Extract agent address and instruction from logs
-      const result = extractAgentFromLogs(logs.logs);
+      const result = matchInstructionsGetData(logs.logs, ['RegisterAgent', 'UpdateAgent', 'DeactivateAgent']);
       
       if (result) {
-        const { agentPubkey, instruction } = result;
+        const { pubkey: agentPubkey, instruction } = result;
         const emoji = instruction === 'RegisterAgent' ? '📝' : 
                      instruction === 'UpdateAgent' ? '🔄' : 
                      instruction === 'DeactivateAgent' ? '🚫' : '🔔';
