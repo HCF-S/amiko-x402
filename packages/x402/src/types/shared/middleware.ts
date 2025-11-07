@@ -16,6 +16,7 @@ export type PaywallConfig = {
   appLogo?: string;
   sessionTokenEndpoint?: string;
   svmRpcUrl?: string;
+  enableTrustless?: boolean;
 };
 
 export type PaymentMiddlewareConfig = {

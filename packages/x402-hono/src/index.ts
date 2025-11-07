@@ -220,7 +220,7 @@ export function paymentMiddleware(
         const trustlessProgramId = SupportedSVMNetworks.includes(network)
           ? TRUSTLESS_PROGRAM_IDS[network as keyof typeof TRUSTLESS_PROGRAM_IDS]
           : undefined;
-        
+
         const html =
           customPaywallHtml ??
           getPaywallHtml({
@@ -235,7 +235,7 @@ export function paymentMiddleware(
             appLogo: paywall?.appLogo,
             sessionTokenEndpoint: paywall?.sessionTokenEndpoint,
             svmRpcUrl: paywall?.svmRpcUrl,
-            trustlessProgramId,
+            trustlessProgramId: paywall?.enableTrustless ? trustlessProgramId : undefined,
           });
         return c.html(html, 402);
       }

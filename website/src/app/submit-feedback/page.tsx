@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
@@ -19,7 +19,7 @@ interface JobRecord {
   created_at_chain: string;
 }
 
-export default function SubmitFeedbackPage() {
+function SubmitFeedbackPageContent() {
   const searchParams = useSearchParams();
   const { publicKey } = useWallet();
   const { program } = useTrustlessProgram();
@@ -281,5 +281,22 @@ export default function SubmitFeedbackPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function SubmitFeedbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen">
+        <main className="container mx-auto px-4 py-8">
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            <p className="mt-4 text-gray-600">Loading...</p>
+          </div>
+        </main>
+      </div>
+    }>
+      <SubmitFeedbackPageContent />
+    </Suspense>
   );
 }

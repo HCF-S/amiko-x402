@@ -200,7 +200,7 @@ export default function MyAgentPage() {
     }
 
     setError('');
-    setSuccess('');
+    setSuccess(null);
     setUpdating(true);
 
     try {

@@ -44,6 +44,7 @@ export function createTimeRoutes(config: TimeConfig) {
         },
         {
           svmRpcUrl: config.solanaPayment.svmRpcUrl,
+          enableTrustless: true,
         }
       ),
       (c) => {

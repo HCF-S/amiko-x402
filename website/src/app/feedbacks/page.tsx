@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ interface FeedbackRecord {
   updated_at: string;
 }
 
-export default function FeedbacksPage() {
+function FeedbacksPageContent() {
   const searchParams = useSearchParams();
   const [feedbacks, setFeedbacks] = useState<FeedbackRecord[]>([]);
   const [filteredFeedbacks, setFilteredFeedbacks] = useState<FeedbackRecord[]>([]);
@@ -238,5 +238,22 @@ export default function FeedbacksPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function FeedbacksPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen">
+        <main className="container mx-auto px-4 py-8">
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            <p className="mt-4 text-gray-600">Loading feedbacks...</p>
+          </div>
+        </main>
+      </div>
+    }>
+      <FeedbacksPageContent />
+    </Suspense>
   );
 }

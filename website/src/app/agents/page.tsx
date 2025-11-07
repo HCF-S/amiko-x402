@@ -158,7 +158,7 @@ export default function AgentsPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-gray-500">Jobs:</span>
                       <span className="font-medium">
-                        {agent.job_count !== '0' ? agent.job_count : 'None'}
+                        {agent.job_count ? agent.job_count : 'None'}
                       </span>
                     </div>
                     

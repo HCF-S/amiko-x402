@@ -45,6 +45,7 @@ export function createOsintRoute(config: OsintConfig) {
         },
         {
           svmRpcUrl: config.solanaPayment.svmRpcUrl,
+          enableTrustless: true,
         }
       ),
       (c) => {
