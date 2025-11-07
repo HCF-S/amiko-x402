@@ -43,11 +43,10 @@ const getX402Config = (network: string): X402Config | undefined => {
       },
     };
   }
-  if (network === "solana-devnet" && (SVM_DEVNET_RPC_URL || TRUSTLESS_PROGRAM_ID)) {
+  if (network === "solana-devnet" && SVM_DEVNET_RPC_URL) {
     return {
       svmConfig: {
-        rpcUrl: SVM_DEVNET_RPC_URL || undefined,
-        trustlessProgramId: TRUSTLESS_PROGRAM_ID || undefined,
+        rpcUrl: SVM_DEVNET_RPC_URL,
       },
     };
   }

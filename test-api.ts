@@ -1,8 +1,8 @@
 // Configuration
-const API_URL = 'http://localhost:4001/time';
-const FACILITATOR_URL = 'http://localhost:4000/prepare';
-const WALLET_ADDRESS = '8gaACvqn9YDA34VwhEZVBMNsVc9EV71fKhgR1JTjeL4P'; // Replace with actual wallet address
-const ENABLE_TRUSTLESS = false;
+const API_URL = 'https://x402-server.heyamiko.com/solana-devnet/time';
+const FACILITATOR_URL = 'https://facilitator.heyamiko.com/prepare';
+const WALLET_ADDRESS = 'your solana address'; // Replace with actual wallet address
+const ENABLE_TRUSTLESS = true;
 
 async function testPrepareEndpoint() {
   try {
