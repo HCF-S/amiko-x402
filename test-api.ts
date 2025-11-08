@@ -69,7 +69,7 @@ async function testPrepareEndpoint() {
     console.log('\n---');
     console.log('Next steps:');
     console.log('1. Client signs the transaction with their wallet');
-    console.log('2. Client submits the signed transaction to the blockchain');
+    console.log('2. Client submits the signed transaction to the endpoint in X-Payment header');
     
   } catch (error) {
     console.error('Error:', error);
