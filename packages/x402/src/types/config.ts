@@ -12,6 +12,12 @@ export interface SvmConfig {
    * If provided, register_job instruction will be added to payment transactions.
    */
   trustlessProgramId?: string;
+  /**
+   * Allow custodial wallet transactions (e.g., Crossmint) that may include additional instructions.
+   * When true, the verification will be more lenient about transaction structure.
+   * Default: false (strict validation)
+   */
+  allowCustodialWallets?: boolean;
 }
 
 /**

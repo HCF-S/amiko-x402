@@ -252,6 +252,7 @@ export function paymentMiddleware(
     // Verify payment
     let decodedPayment: PaymentPayload;
     try {
+      // Use universal decoder that handles both EVM and SVM
       decodedPayment = exact.evm.decodePayment(payment);
       decodedPayment.x402Version = x402Version;
     } catch (error) {
@@ -259,7 +260,7 @@ export function paymentMiddleware(
         {
           error:
             errorMessages?.invalidPayment ||
-            (error instanceof Error ? error : new Error("Invalid or malformed payment header")),
+            (error instanceof Error ? error.message : "Invalid or malformed payment header"),
           accepts: paymentRequirements,
           x402Version,
         },
@@ -328,7 +329,7 @@ export function paymentMiddleware(
         {
           error:
             errorMessages?.settlementFailed ||
-            (error instanceof Error ? error : new Error("Failed to settle payment")),
+            (error instanceof Error ? error.message : "Failed to settle payment"),
           accepts: paymentRequirements,
           x402Version,
         },

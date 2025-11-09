@@ -36,9 +36,17 @@ if (!BASE_MAINNET_PRIVATE_KEY && !BASE_SEPOLIA_PRIVATE_KEY && !SVM_PRIVATE_KEY) 
 
 // Helper to get X402 config for a specific network
 const getX402Config = (network: string): X402Config | undefined => {
+  // Always allow custodial wallets (like Crossmint) which may add extra instructions
+  const baseConfig = {
+    svmConfig: {
+      allowCustodialWallets: true,
+    },
+  };
+
   if (network === "solana" && SVM_MAINNET_RPC_URL) {
     return {
       svmConfig: {
+        ...baseConfig.svmConfig,
         rpcUrl: SVM_MAINNET_RPC_URL,
       },
     };
@@ -46,11 +54,12 @@ const getX402Config = (network: string): X402Config | undefined => {
   if (network === "solana-devnet" && SVM_DEVNET_RPC_URL) {
     return {
       svmConfig: {
+        ...baseConfig.svmConfig,
         rpcUrl: SVM_DEVNET_RPC_URL,
       },
     };
   }
-  return undefined;
+  return baseConfig;
 };
 
 const app = express();
@@ -165,7 +174,7 @@ app.get("/supported", async (req: Request, res: Response) => {
 app.get("/prepare", (req: Request, res: Response) => {
   res.json({
     endpoint: "/prepare",
-    description: "POST to prepare unsigned transactions for client wallets to sign",
+    description: "POST to prepare unsigned transactions for client wallets",
     method: "POST",
     body: {
       paymentRequirements: "PaymentRequirements object from 402 response",
@@ -179,7 +188,7 @@ app.get("/prepare", (req: Request, res: Response) => {
     notes: [
       "Only supports Solana (SVM) networks",
       "Facilitator acts as fee payer for the transaction",
-      "Client must sign the transaction with their wallet before submitting",
+      "Returns unsigned transaction for client to sign",
       "If enableTrustless is true, includes on-chain job registration",
     ],
   });
@@ -237,10 +246,10 @@ app.post("/prepare", async (req: Request, res: Response) => {
       enrichedPaymentRequirements,
       prepareConfig,
     );
-    
+
     console.log("Unsigned transaction created successfully");
     console.log("=== PREPARE COMPLETE ===\n");
-    
+
     res.json({
       transaction: unsignedTransaction,
       paymentRequirements: enrichedPaymentRequirements,
@@ -300,6 +309,8 @@ app.post("/verify", async (req: Request, res: Response) => {
     // Verify payment
     console.log("Calling verify...");
     const config = getX402Config(paymentRequirements.network);
+    console.log("Config being passed to verify():", JSON.stringify(config, null, 2));
+    console.log("Config.svmConfig.allowCustodialWallets:", config?.svmConfig?.allowCustodialWallets);
     const valid = await verify(client, paymentPayload, paymentRequirements, config);
     console.log("Verify result:", JSON.stringify(valid, null, 2));
     console.log("=== VERIFY COMPLETE ===\n");

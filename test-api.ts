@@ -1,8 +1,21 @@
+import {
+  getBase58Encoder,
+  getBase64Encoder,
+  createKeyPairSignerFromBytes,
+  getBase64EncodedWireTransaction,
+  partiallySignTransactionMessageWithSigners,
+  getCompiledTransactionMessageDecoder,
+  compileTransactionMessage,
+  decompileTransactionMessage,
+} from '@solana/kit';
+
 // Configuration
-const API_URL = 'https://x402-server.heyamiko.com/solana-devnet/time';
-const FACILITATOR_URL = 'https://facilitator.heyamiko.com/prepare';
-const WALLET_ADDRESS = 'your solana address'; // Replace with actual wallet address
-const ENABLE_TRUSTLESS = true;
+const API_URL = 'http://localhost:4001/solana-devnet/time';
+const FACILITATOR_URL = 'http://localhost:4000/prepare';
+const WALLET_ADDRESS = 'AxCLrjDQQLeKv56tV7JiCektV8QJvpRykHqCwmKRGwYh';
+const ENABLE_TRUSTLESS = false;
+// Private key from facilitator/.env (base58 encoded)
+const PRIVATE_KEY_BASE58 = 'uXtMiQYKU3gyvy6AtJr5rF15PHU5z24MXW54UPM3vJm8NoKYmwwUj295oEbEWLJnnDsS9AK86tY57DaDfRbzD3s';
 
 async function testPrepareEndpoint() {
   try {
@@ -66,11 +79,73 @@ async function testPrepareEndpoint() {
     console.log('\nUnsigned Transaction (base64):');
     console.log(transaction);
 
-    console.log('\n---');
-    console.log('Next steps:');
-    console.log('1. Client signs the transaction with their wallet');
-    console.log('2. Client submits the signed transaction to the endpoint in X-Payment header');
-    
+    console.log('\n---\n');
+
+    // Step 3: Sign the transaction
+    console.log('Step 3: Signing transaction with wallet...\n');
+
+    // Decode the private key from base58
+    const base58Encoder = getBase58Encoder();
+    const privateKeyBytes = base58Encoder.encode(PRIVATE_KEY_BASE58);
+    const signer = await createKeyPairSignerFromBytes(privateKeyBytes);
+
+    console.log('Signer address:', signer.address);
+
+    // Decode the base64-encoded compiled transaction message
+    const base64Encoder = getBase64Encoder();
+    const compiledMessageBytes = base64Encoder.encode(transaction);
+    const compiledMessageDecoder = getCompiledTransactionMessageDecoder();
+    const compiledMessage = compiledMessageDecoder.decode(compiledMessageBytes);
+
+    // Decompile it back to a transaction message
+    const transactionMessage = decompileTransactionMessage(compiledMessage);
+
+    // Sign the transaction message
+    const signedTransaction = await partiallySignTransactionMessageWithSigners(transactionMessage, [signer]);
+
+    // Encode as base64 wire transaction
+    const signedTransactionBase64 = getBase64EncodedWireTransaction(signedTransaction);
+
+    // Create the payment payload
+    const paymentPayload = {
+      scheme: 'exact',
+      network: 'solana-devnet',
+      x402Version: 1,
+      payload: {
+        transaction: signedTransactionBase64,
+      },
+    };
+
+    console.log('✅ Transaction signed successfully!\n');
+    console.log('Payment Payload:', JSON.stringify(paymentPayload, null, 2));
+
+    console.log('\n---\n');
+
+    // Step 4: Submit payment to the API endpoint
+    console.log('Step 4: Submitting payment to API endpoint...\n');
+
+    // Submit the payment (base64 encode the JSON payload)
+    const paymentHeaderValue = Buffer.from(JSON.stringify(paymentPayload)).toString('base64');
+    const paymentResponse = await fetch(API_URL, {
+      method: 'GET',
+      headers: {
+        'X-Payment': paymentHeaderValue,
+      },
+    });
+
+    console.log(`Response Status: ${paymentResponse.status}`);
+
+    if (paymentResponse.ok) {
+      const result = await paymentResponse.text();
+      console.log('\n✅ PAYMENT SUCCESSFUL!');
+      console.log('\nAPI Response:');
+      console.log(result);
+    } else {
+      const error = await paymentResponse.json();
+      console.log('\n❌ Payment failed');
+      console.log('Error:', JSON.stringify(error, null, 2));
+    }
+
   } catch (error) {
     console.error('Error:', error);
   }

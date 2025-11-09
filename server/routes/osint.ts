@@ -42,7 +42,7 @@ export function createOsintRoute(config: OsintConfig) {
             network: config.solanaMainnet.network as Network,
           },
         },
-        { 
+        {
           url: config.solanaMainnet.facilitatorUrl,
         },
         {
@@ -68,7 +68,7 @@ export function createOsintRoute(config: OsintConfig) {
             network: config.solanaDevnet.network as Network,
           },
         },
-        { 
+        {
           url: config.solanaDevnet.facilitatorUrl,
         },
         {

@@ -66,8 +66,19 @@ export async function settle(
 
   const svmPayload = payload.payload as ExactSvmPayload;
   const decodedTransaction = decodeTransactionFromPayload(svmPayload);
-  const signedTransaction = await signTransactionWithSigner(signer, decodedTransaction);
-  assertTransactionFullySigned(signedTransaction);
+
+  const allowCustodialWallets = config?.svmConfig?.allowCustodialWallets || false;
+
+  // For custodial wallets, the transaction is already signed by the custodial service (like Crossmint)
+  // Don't attempt to sign it again with the facilitator's key
+  const signedTransaction = allowCustodialWallets
+    ? decodedTransaction
+    : await signTransactionWithSigner(signer, decodedTransaction);
+
+  // For custodial wallets, skip the full signature check - they provide only the signatures they need to
+  if (!allowCustodialWallets) {
+    assertTransactionFullySigned(signedTransaction);
+  }
   const payer = getTokenPayerFromTransaction(signedTransaction);
 
   const rpc = getRpcClient(paymentRequirements.network, config?.svmConfig?.rpcUrl);

@@ -36,15 +36,15 @@ vi.mock("@solana/kit", async importOriginal => {
 describe("decodeTransactionFromPayload", () => {
   it("should decode a valid transaction string", () => {
     const mockDecodedTransaction = { signature: "a_valid_signature" };
-    const encodeFn = vi.fn().mockReturnValue(new Uint8Array());
-    const decodeFn = vi.fn().mockReturnValue(mockDecodedTransaction);
+    const decodeFn = vi.fn().mockReturnValue(new Uint8Array());
+    const transactionDecodeFn = vi.fn().mockReturnValue(mockDecodedTransaction);
 
     vi.mocked(getBase64Encoder).mockReturnValue({
-      encode: encodeFn,
+      decode: decodeFn,
       write: vi.fn(),
     } as any);
     vi.mocked(getTransactionDecoder).mockReturnValue({
-      decode: decodeFn,
+      decode: transactionDecodeFn,
       read: vi.fn(),
     } as any);
 
@@ -54,16 +54,16 @@ describe("decodeTransactionFromPayload", () => {
 
     const result = decodeTransactionFromPayload(svmPayload);
     expect(result).toEqual(mockDecodedTransaction);
-    expect(encodeFn).toHaveBeenCalledWith("a_valid_transaction_string");
-    expect(decodeFn).toHaveBeenCalled();
+    expect(decodeFn).toHaveBeenCalledWith("a_valid_transaction_string");
+    expect(transactionDecodeFn).toHaveBeenCalled();
   });
 
   it("should throw an error for an invalid transaction string", () => {
-    const encodeFn = vi.fn().mockImplementation(() => {
-      throw new Error("Encoding failed");
+    const decodeFn = vi.fn().mockImplementation(() => {
+      throw new Error("Decoding failed");
     });
     vi.mocked(getBase64Encoder).mockReturnValue({
-      encode: encodeFn,
+      decode: decodeFn,
       write: vi.fn(),
     } as any);
 
