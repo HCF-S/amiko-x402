@@ -1,11 +1,22 @@
 'use client';
 
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { BaseWalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { cn } from '@/lib/utils';
+
+const WALLET_LABELS = {
+  'change-wallet': 'Change wallet',
+  connecting: 'Connecting ...',
+  'copy-address': 'Copy address',
+  copied: 'Copied',
+  disconnect: 'Disconnect',
+  'has-wallet': 'Connect Wallet',
+  'no-wallet': 'Connect Wallet',
+} as const;
 
 export const WalletButton = () => {
   return (
-    <WalletMultiButton 
+    <BaseWalletMultiButton 
+      labels={WALLET_LABELS}
       className={cn(
         "!inline-flex !items-center !justify-center !whitespace-nowrap",
         "!rounded-md !text-sm !font-medium !ring-offset-background",
@@ -15,8 +26,6 @@ export const WalletButton = () => {
         "!bg-primary !text-primary-foreground hover:!bg-primary/90",
         "!h-10 !px-4 !py-2"
       )}
-    >
-      Connect Wallet
-    </WalletMultiButton>
+    />
   );
 };
