@@ -75,10 +75,22 @@ async function fetchX402Info(url: string): Promise<any | null> {
 async function syncAgentEndpoints(agentWallet: string, metadataJson: any) {
   if (!metadataJson?.endpoints || !Array.isArray(metadataJson.endpoints)) {
     console.log(`  ℹ️  No endpoints in metadata`);
+    
+    // Delete all existing endpoints for this agent
+    const deleted = await prisma.agentServices.deleteMany({
+      where: { agent_wallet: agentWallet },
+    });
+    
+    if (deleted.count > 0) {
+      console.log(`  🗑️  Deleted ${deleted.count} endpoint(s)`);
+    }
+    
     return;
   }
 
   console.log(`  📡 Processing ${metadataJson.endpoints.length} endpoint(s)...`);
+
+  const syncedUrls: string[] = [];
 
   for (const endpoint of metadataJson.endpoints) {
     if (!endpoint.url) {
@@ -120,10 +132,25 @@ async function syncAgentEndpoints(agentWallet: string, metadataJson: any) {
         },
       });
 
+      syncedUrls.push(endpoint.url);
       console.log(`  ✅ Synced endpoint: ${endpoint.url}`);
     } catch (error) {
       console.error(`  ❌ Error syncing endpoint ${endpoint.url}:`, error);
     }
+  }
+
+  // Delete endpoints that are no longer in metadata
+  const deleted = await prisma.agentServices.deleteMany({
+    where: {
+      agent_wallet: agentWallet,
+      url: {
+        notIn: syncedUrls,
+      },
+    },
+  });
+
+  if (deleted.count > 0) {
+    console.log(`  🗑️  Deleted ${deleted.count} outdated endpoint(s)`);
   }
 }
 
