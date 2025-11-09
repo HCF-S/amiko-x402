@@ -27,7 +27,7 @@ export function createHealthRoute(config: NetworkConfig) {
       };
       endpoints.solanaMainnetOsint = {
         path: "/osint/:handle",
-        method: "GET",
+        method: "POST",
         cost: "$1.00",
         network: "solana",
         description: "Twitter OSINT analysis (Solana Mainnet)",
@@ -44,7 +44,7 @@ export function createHealthRoute(config: NetworkConfig) {
       };
       endpoints.solanaDevnetOsint = {
         path: "/solana-devnet/osint/:handle",
-        method: "GET",
+        method: "POST",
         cost: "$1.00",
         network: "solana-devnet",
         description: "Twitter OSINT analysis (Solana Devnet)",
@@ -61,7 +61,7 @@ export function createHealthRoute(config: NetworkConfig) {
       };
       endpoints.baseMainnetOsint = {
         path: "/base/osint/:handle",
-        method: "GET",
+        method: "POST",
         cost: "$1.00",
         network: "base",
         description: "Twitter OSINT analysis (Base Mainnet)",
@@ -78,7 +78,7 @@ export function createHealthRoute(config: NetworkConfig) {
       };
       endpoints.baseSepoliaOsint = {
         path: "/base-sepolia/osint/:handle",
-        method: "GET",
+        method: "POST",
         cost: "$1.00",
         network: "base-sepolia",
         description: "Twitter OSINT analysis (Base Sepolia)",

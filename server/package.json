@@ -10,6 +10,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@ai-sdk/groq": "^1.0.10",
     "@coinbase/onchainkit": "^0.38.14",
     "@hono/node-server": "^1.19.6",
     "@scure/base": "^1.2.6",
@@ -24,11 +25,13 @@
     "@wallet-standard/app": "^1.1.0",
     "@wallet-standard/base": "^1.1.0",
     "@wallet-standard/features": "^1.1.0",
+    "ai": "^4.0.0",
     "buffer": "^6.0.3",
     "dotenv": "^16.4.7",
     "hono": "^4.10.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "twitter-api-sdk": "^1.2.1",
     "viem": "^2.21.26",
     "wagmi": "^2.15.6",
     "x402": "workspace:*",

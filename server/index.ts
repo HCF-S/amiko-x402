@@ -84,34 +84,26 @@ app.route("/", createOsintRoute({
 console.log(`🚀 Amiko x402 Server running at http://localhost:${PORT}`);
 console.log(`Facilitator: ${facilitatorUrl}`);
 
-if (svmRpcMainnetUrl) {
-  console.log(`Solana Mainnet RPC: ${svmRpcMainnetUrl}`);
-}
-
-if (svmRpcDevnetUrl) {
-  console.log(`Solana Devnet RPC: ${svmRpcDevnetUrl}`);
-}
-
 console.log(`\nAvailable endpoints:`);
 
 if (solanaMainnetConfig) {
   console.log(`  GET /time - Current UTC time ($0.01) [Solana Mainnet]`);
-  console.log(`  GET /osint/:handle - Twitter OSINT analysis ($1.00) [Solana Mainnet]`);
+  console.log(`  POST /osint/:handle - Twitter OSINT analysis ($1.00) [Solana Mainnet]`);
 }
 
 if (solanaDevnetConfig) {
   console.log(`  GET /solana-devnet/time - Current UTC time ($0.01) [Solana Devnet]`);
-  console.log(`  GET /solana-devnet/osint/:handle - Twitter OSINT analysis ($1.00) [Solana Devnet]`);
+  console.log(`  POST /solana-devnet/osint/:handle - Twitter OSINT analysis ($1.00) [Solana Devnet]`);
 }
 
 if (baseMainnetConfig) {
   console.log(`  GET /base/time - Current UTC time ($0.01) [Base Mainnet]`);
-  console.log(`  GET /base/osint/:handle - Twitter OSINT analysis ($1.00) [Base Mainnet]`);
+  console.log(`  POST /base/osint/:handle - Twitter OSINT analysis ($1.00) [Base Mainnet]`);
 }
 
 if (baseSepoliaConfig) {
   console.log(`  GET /base-sepolia/time - Current UTC time ($0.01) [Base Sepolia]`);
-  console.log(`  GET /base-sepolia/osint/:handle - Twitter OSINT analysis ($1.00) [Base Sepolia]`);
+  console.log(`  POST /base-sepolia/osint/:handle - Twitter OSINT analysis ($1.00) [Base Sepolia]`);
 }
 
 serve({

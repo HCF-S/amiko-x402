@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { paymentMiddleware, type Resource, type SolanaAddress, type Network } from "x402-hono";
+import { analyzeTwitterProfile } from "../services/osint.js";
 
 type PaymentConfig = {
   address: `0x${string}` | SolanaAddress;
@@ -15,29 +16,29 @@ type OsintConfig = {
   baseSepolia?: PaymentConfig;
 };
 
-// Helper to generate OSINT response
-const getOsintResponse = (twitterHandle: string) => {
-  // TODO: Implement OSINT analysis logic
-  // For now, return a placeholder response
-  return {
-    handle: twitterHandle,
-    status: "pending",
-    message: "OSINT analysis not yet implemented",
-    timestamp: new Date().toISOString()
-  };
-};
-
 export function createOsintRoute(config: OsintConfig) {
   const app = new Hono();
 
+  // Test endpoint
+  app.get("/test/osint/:handle", async (c) => {
+    try {
+      const twitterHandle = c.req.param("handle");
+      const profile = await analyzeTwitterProfile(twitterHandle);
+      return c.json(profile);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Analysis failed";
+      return c.json({ error: message }, 500);
+    }
+  });
+
   // Solana Mainnet OSINT endpoint - analyzes Twitter user profile - costs $1.00
   if (config.solanaMainnet) {
-    app.get(
+    app.post(
       "/osint/:handle",
       paymentMiddleware(
         config.solanaMainnet.address,
         {
-          "GET /osint/*": {
+          "POST /osint/*": {
             price: "$1.00",
             network: config.solanaMainnet.network as Network,
           },
@@ -49,21 +50,27 @@ export function createOsintRoute(config: OsintConfig) {
           svmRpcUrl: config.solanaMainnet.svmRpcUrl,
         }
       ),
-      (c) => {
-        const twitterHandle = c.req.param("handle");
-        return c.json(getOsintResponse(twitterHandle));
+      async (c) => {
+        try {
+          const twitterHandle = c.req.param("handle");
+          const profile = await analyzeTwitterProfile(twitterHandle);
+          return c.json(profile);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Analysis failed";
+          return c.json({ error: message }, 500);
+        }
       }
     );
   }
 
   // Solana Devnet OSINT endpoint - analyzes Twitter user profile - costs $1.00
   if (config.solanaDevnet) {
-    app.get(
+    app.post(
       "/solana-devnet/osint/:handle",
       paymentMiddleware(
         config.solanaDevnet.address,
         {
-          "GET /solana-devnet/osint/*": {
+          "POST /solana-devnet/osint/*": {
             price: "$1.00",
             network: config.solanaDevnet.network as Network,
           },
@@ -76,51 +83,69 @@ export function createOsintRoute(config: OsintConfig) {
           enableTrustless: true,
         }
       ),
-      (c) => {
-        const twitterHandle = c.req.param("handle");
-        return c.json(getOsintResponse(twitterHandle));
+      async (c) => {
+        try {
+          const twitterHandle = c.req.param("handle");
+          const profile = await analyzeTwitterProfile(twitterHandle);
+          return c.json(profile);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Analysis failed";
+          return c.json({ error: message }, 500);
+        }
       }
     );
   }
 
   // Base Mainnet OSINT endpoint - analyzes Twitter user profile - costs $1.00
   if (config.baseMainnet) {
-    app.get(
+    app.post(
       "/base/osint/:handle",
       paymentMiddleware(
         config.baseMainnet.address,
         {
-          "GET /base/osint/*": {
+          "POST /base/osint/*": {
             price: "$1.00",
             network: config.baseMainnet.network as Network,
           },
         },
         { url: config.baseMainnet.facilitatorUrl }
       ),
-      (c) => {
-        const twitterHandle = c.req.param("handle");
-        return c.json(getOsintResponse(twitterHandle));
+      async (c) => {
+        try {
+          const twitterHandle = c.req.param("handle");
+          const profile = await analyzeTwitterProfile(twitterHandle);
+          return c.json(profile);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Analysis failed";
+          return c.json({ error: message }, 500);
+        }
       }
     );
   }
 
   // Base Sepolia OSINT endpoint - analyzes Twitter user profile - costs $1.00
   if (config.baseSepolia) {
-    app.get(
+    app.post(
       "/base-sepolia/osint/:handle",
       paymentMiddleware(
         config.baseSepolia.address,
         {
-          "GET /base-sepolia/osint/*": {
+          "POST /base-sepolia/osint/*": {
             price: "$1.00",
             network: config.baseSepolia.network as Network,
           },
         },
         { url: config.baseSepolia.facilitatorUrl }
       ),
-      (c) => {
-        const twitterHandle = c.req.param("handle");
-        return c.json(getOsintResponse(twitterHandle));
+      async (c) => {
+        try {
+          const twitterHandle = c.req.param("handle");
+          const profile = await analyzeTwitterProfile(twitterHandle);
+          return c.json(profile);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Analysis failed";
+          return c.json({ error: message }, 500);
+        }
       }
     );
   }
