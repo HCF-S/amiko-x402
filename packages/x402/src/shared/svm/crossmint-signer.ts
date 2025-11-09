@@ -33,7 +33,7 @@ export async function isWalletCrossmint(
   try {
     console.log(`[crossmint-signer] Querying wallet: ${walletAddress}`);
 
-    const response = await fetch(`${platformApiUrl}/api/wallets/${encodeURIComponent(walletAddress)}`);
+    const response = await fetch(`${platformApiUrl}/public/wallets/${encodeURIComponent(walletAddress)}`);
 
     if (!response.ok) {
       console.error(`[crossmint-signer] API query failed: ${response.status} ${response.statusText}`);

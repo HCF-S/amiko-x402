@@ -23,6 +23,12 @@ export interface SvmConfig {
    * Default: http://localhost:4114
    */
   platformApiUrl?: string;
+  /**
+   * Facilitator signer for trustless transactions.
+   * Internal use only - passed when building unsigned transactions with register_job instruction.
+   * @internal
+   */
+  facilitatorSigner?: any; // TransactionSigner type from @solana/kit
 }
 
 /**
