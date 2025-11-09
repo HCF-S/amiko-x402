@@ -60,6 +60,8 @@ const getX402Config = (network: string): X402Config | undefined => {
       svmConfig: {
         ...baseConfig.svmConfig,
         rpcUrl: SVM_DEVNET_RPC_URL,
+        // Add trustless program ID for devnet
+        trustlessProgramId: TRUSTLESS_PROGRAM_ID || undefined,
       },
     };
   }
@@ -349,10 +351,11 @@ app.post("/settle", async (req: Request, res: Response) => {
     const body: SettleRequest = req.body;
     console.log("Network:", body.paymentRequirements?.network);
     console.log("Scheme:", body.paymentRequirements?.scheme);
-    
+    console.log("Enable Trustless:", body.enableTrustless);
+
     const paymentRequirements = PaymentRequirementsSchema.parse(body.paymentRequirements);
     const paymentPayload = PaymentPayloadSchema.parse(body.paymentPayload);
-    
+
     console.log("Payment Requirements:", JSON.stringify(paymentRequirements, null, 2));
     console.log("Payment Payload:", JSON.stringify(paymentPayload, null, 2));
 
@@ -380,13 +383,26 @@ app.post("/settle", async (req: Request, res: Response) => {
       throw new Error(`Unsupported network: ${paymentRequirements.network}`);
     }
 
-    // Settle payment
+    // Get config - use trustless config if enabled for solana-devnet
     console.log("Calling settle...");
-    const config = getX402Config(paymentRequirements.network);
+    const baseConfig = getX402Config(paymentRequirements.network);
+
+    // Add trustless program ID if enabled (only for devnet)
+    const config: X402Config | undefined = body.enableTrustless && TRUSTLESS_PROGRAM_ID && paymentRequirements.network === "solana-devnet"
+      ? {
+          ...baseConfig,
+          svmConfig: {
+            ...baseConfig?.svmConfig,
+            trustlessProgramId: TRUSTLESS_PROGRAM_ID,
+          },
+        }
+      : baseConfig;
+
+    console.log("Config for settle:", JSON.stringify(config, null, 2));
     const response = await settle(signer, paymentPayload, paymentRequirements, config);
     console.log("Settle result:", JSON.stringify(response, null, 2));
     console.log("=== SETTLE COMPLETE ===\n");
-    
+
     res.json(response);
   } catch (error) {
     console.error("Settle error:", error);

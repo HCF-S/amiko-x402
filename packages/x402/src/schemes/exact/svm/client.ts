@@ -113,19 +113,48 @@ export async function createUnsignedTransaction(
     signTransactions: async () => { throw new Error("Not implemented"); },
   };
 
-  const transactionMessage = await createTransferTransactionMessage(
-    mockSigner,
-    paymentRequirements,
-    config,
-  );
+  // For trustless transactions, we need to create a mock signer for the facilitator too
+  // so that the transaction message header includes both required signers
+  const feePayer = paymentRequirements.extra?.feePayer as Address | undefined;
+  const isTrustless = !!config?.svmConfig?.trustlessProgramId;
+
+  let transactionMessage;
+  if (isTrustless && feePayer) {
+    // Create mock signer for facilitator
+    const facilitatorMockSigner: TransactionSigner = {
+      address: feePayer,
+      signTransactions: async () => { throw new Error("Not implemented"); },
+    };
+
+    // Pass facilitator signer in config so it can be used when building the transaction
+    const configWithFacilitatorSigner = {
+      ...config,
+      svmConfig: {
+        ...config?.svmConfig,
+        facilitatorSigner: facilitatorMockSigner,
+      },
+    };
+
+    transactionMessage = await createTransferTransactionMessage(
+      mockSigner,
+      paymentRequirements,
+      configWithFacilitatorSigner as X402Config,
+    );
+  } else {
+    transactionMessage = await createTransferTransactionMessage(
+      mockSigner,
+      paymentRequirements,
+      config,
+    );
+  }
 
   // Compile the transaction message
   const compiledTransactionMessage = compileTransactionMessage(transactionMessage);
-  
+
   // Serialize the compiled transaction message to base64
   const encoder = getCompiledTransactionMessageEncoder();
   const encodedMessage = encoder.encode(compiledTransactionMessage);
-  
+
   // Convert to base64
   return btoa(String.fromCharCode(...encodedMessage));
 }
@@ -237,13 +266,14 @@ async function createAtaAndTransferInstructions(
     // Transfer is the last instruction BEFORE RegisterJob
     const computeBudgetInstructionCount = 2;
     const transferInstructionIndex = computeBudgetInstructionCount + (instructions.length - 1);
-    
+
     const registerJobIx = await createRegisterJobInstruction(
       client,
       paymentRequirements,
       tokenProgramAddress,
       config.svmConfig.trustlessProgramId,
       transferInstructionIndex,
+      config, // Pass config so we can get facilitator signer
     );
     instructions.push(registerJobIx);
   }
@@ -360,6 +390,7 @@ async function createTransferInstruction(
  * @param tokenProgramAddress - The address of the token program
  * @param trustlessProgramId - The address of the trustless program
  * @param transferInstructionIndex - The index of the transfer instruction in the transaction
+ * @param config - Optional configuration for X402 operations (provides facilitator signer)
  * @returns A promise that resolves to the register_job instruction
  */
 async function createRegisterJobInstruction(
@@ -368,12 +399,17 @@ async function createRegisterJobInstruction(
   tokenProgramAddress: Address,
   trustlessProgramId: string,
   transferInstructionIndex: number,
+  config?: X402Config,
 ): Promise<Instruction> {
   const { asset, payTo, extra } = paymentRequirements;
   const programId = address(trustlessProgramId);
-  
-  // Extract fee payer from paymentRequirements.extra, default to client address
-  const feePayer = (extra?.feePayer as Address) || client.address;
+
+  // Get facilitator signer from config (for trustless transactions)
+  // This ensures the facilitator is properly included as a signer in the transaction message
+  const facilitatorSigner = config?.svmConfig?.facilitatorSigner as TransactionSigner | undefined;
+
+  // Extract fee payer address from paymentRequirements.extra, default to client address
+  const feePayerAddress = (extra?.feePayer as Address) || client.address;
 
   // Generate a unique identifier to use as the payment_tx address
   // This serves as a unique job ID and is used to derive the job_record PDA
@@ -424,21 +460,35 @@ async function createRegisterJobInstruction(
   // Instruction data: discriminator + transfer_instruction_index (u8)
   const data = Buffer.concat([discriminator, Buffer.from([transferInstructionIndex])]);
 
+  // Build accounts list
+  // For trustless transactions, use the facilitator TransactionSigner so it's properly registered
+  // as a required signer in the transaction message. Otherwise just use the address.
+  const accounts: any[] = [
+    { address: jobRecord, role: 1 }, // job_record (writable)
+    { address: agentAccount, role: 1 }, // agent_account (writable)
+    { address: payTo as Address, role: 0 }, // agent_wallet (readonly)
+    { address: clientTokenAccount, role: 0 }, // client_token_account (readonly)
+    { address: agentTokenAccount, role: 0 }, // agent_token_account (readonly)
+    { address: paymentTxAddress, role: 0 }, // payment_tx (readonly, unique job identifier)
+    { address: address("Sysvar1nstructions1111111111111111111111111"), role: 0 }, // instruction_sysvar
+    client, // client_wallet (signer) - TransactionSigner auto-converts to signer metadata
+  ];
+
+  // Add fee payer - use TransactionSigner if available (for trustless), otherwise just address
+  if (facilitatorSigner) {
+    accounts.push(facilitatorSigner); // TransactionSigner auto-converts to signer + writable metadata
+  } else {
+    accounts.push({ address: feePayerAddress, role: 3 }); // Manually specify signer + writable
+  }
+
+  accounts.push(
+    { address: address("11111111111111111111111111111111"), role: 0 }, // system_program
+    { address: tokenProgramAddress, role: 0 }, // token_program (readonly)
+  );
+
   return {
     programAddress: programId,
-    accounts: [
-      { address: jobRecord, role: 1 }, // job_record (writable)
-      { address: agentAccount, role: 1 }, // agent_account (writable)
-      { address: payTo as Address, role: 0 }, // agent_wallet (readonly)
-      { address: clientTokenAccount, role: 0 }, // client_token_account (readonly)
-      { address: agentTokenAccount, role: 0 }, // agent_token_account (readonly)
-      { address: paymentTxAddress, role: 0 }, // payment_tx (readonly, unique job identifier)
-      { address: address("Sysvar1nstructions1111111111111111111111111"), role: 0 }, // instruction_sysvar
-      { address: client.address, role: 2 }, // client_wallet (signer)
-      { address: feePayer, role: 3 }, // fee_payer (signer + writable)
-      { address: address("11111111111111111111111111111111"), role: 0 }, // system_program
-      { address: tokenProgramAddress, role: 0 }, // token_program (readonly)
-    ],
+    accounts,
     data,
   };
 }
