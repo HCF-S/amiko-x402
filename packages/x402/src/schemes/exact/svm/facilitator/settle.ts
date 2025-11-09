@@ -83,21 +83,66 @@ export async function settle(
     ? await isWalletCrossmint(payer, platformApiUrl)
     : false;
 
+  // Check if this is a trustless transaction by looking for register_job instruction
+  const isTrustless = config?.svmConfig?.trustlessProgramId !== undefined;
+
   if (isCrossmint && crossmintApiKey) {
-    // Sign with Crossmint API for custodial wallets
-    console.log(`[settle] Wallet ${payer} is Crossmint-managed, signing with Crossmint API`);
-    signedTransaction = await signWithCrossmintAPI(payer, decodedTransaction, crossmintApiKey);
+    // Check if transaction is already fully signed (e.g., from a previous settle call)
+    let isAlreadySigned = false;
+    try {
+      assertTransactionFullySigned(decodedTransaction);
+      isAlreadySigned = true;
+      console.log(`[settle] Transaction is already fully signed, skipping additional signing`);
+    } catch {
+      // Transaction not fully signed yet, proceed with signing
+    }
+
+    if (isAlreadySigned) {
+      // Transaction is already fully signed (and likely already submitted)
+      // Just extract jobId without re-submitting
+      console.log(`[settle] Extracting jobId from already-signed transaction`);
+      signedTransaction = decodedTransaction;
+
+      const jobId = extractJobIdFromTransaction(signedTransaction);
+      console.log(`[settle] Extracted jobId: ${jobId || 'none'}`);
+
+      return {
+        success: true,
+        payer,
+        transaction: 'already-submitted',
+        network: payload.network,
+        jobId,
+      };
+    } else {
+      // For Crossmint wallets, we need to handle multi-sig trustless transactions differently
+      let transactionToSign = decodedTransaction;
+
+      if (isTrustless) {
+        // For trustless transactions, the facilitator must sign FIRST
+        // Then Crossmint will add the client's signature
+        console.log(`[settle] Trustless transaction detected, facilitator signing first...`);
+        transactionToSign = await signTransactionWithSigner(signer, decodedTransaction);
+      }
+
+      // Sign with Crossmint API for custodial wallets
+      console.log(`[settle] Wallet ${payer} is Crossmint-managed, signing with Crossmint API`);
+      signedTransaction = await signWithCrossmintAPI(payer, transactionToSign, crossmintApiKey);
+    }
 
     // Check if Crossmint already submitted the transaction
     if ((signedTransaction as any)._crossmintSubmitted) {
       const signature = (signedTransaction as any)._crossmintSignature;
       console.log(`[settle] Crossmint already submitted transaction: ${signature}`);
 
+      // Extract job ID if this is a trustless transaction
+      const jobId = extractJobIdFromTransaction(signedTransaction);
+
       return {
         success: true,
         payer,
         transaction: signature,
         network: payload.network,
+        jobId,
       };
     }
   } else {
