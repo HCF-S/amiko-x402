@@ -21,6 +21,10 @@ import { TOKEN_2022_PROGRAM_ADDRESS } from "@solana-program/token-2022";
  * Given an object with a base64 encoded transaction, decode the
  * base64 encoded transaction into a solana transaction object.
  *
+ * This function handles both:
+ * - Full transactions (with signatures) - from signed payloads
+ * - Transaction messages (without signatures) - from unsigned payloads prepared by facilitator
+ *
  * @param svmPayload - The SVM payload to decode
  * @returns The decoded transaction
  */
@@ -28,8 +32,25 @@ export function decodeTransactionFromPayload(svmPayload: ExactSvmPayload): Trans
   try {
     const base64Encoder = getBase64Encoder();
     const transactionBytes = base64Encoder.encode(svmPayload.transaction);
-    const transactionDecoder = getTransactionDecoder();
-    return transactionDecoder.decode(transactionBytes);
+
+    // Try to decode as a full transaction first (with signatures)
+    try {
+      const transactionDecoder = getTransactionDecoder();
+      return transactionDecoder.decode(transactionBytes);
+    } catch (signedError) {
+      // If that fails, try to decode as a compiled message (unsigned transaction)
+      const compiledMessageDecoder = getCompiledTransactionMessageDecoder();
+      const compiledMessage = compiledMessageDecoder.decode(transactionBytes);
+
+      // Convert compiled message to transaction format with empty signatures
+      // The signatures will be filled in by the facilitator during signing
+      const transaction: Transaction = {
+        messageBytes: transactionBytes as Transaction["messageBytes"],
+        signatures: {},
+      };
+
+      return transaction;
+    }
   } catch (error) {
     console.error("error", error);
     throw new Error("invalid_exact_svm_payload_transaction");

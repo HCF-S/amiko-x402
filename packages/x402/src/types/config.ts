@@ -13,11 +13,16 @@ export interface SvmConfig {
    */
   trustlessProgramId?: string;
   /**
-   * Allow custodial wallet transactions (e.g., Crossmint) that may include additional instructions.
-   * When true, the verification will be more lenient about transaction structure.
-   * Default: false (strict validation)
+   * Crossmint API key for signing custodial wallet transactions.
+   * Required if using Crossmint-managed wallets.
    */
-  allowCustodialWallets?: boolean;
+  crossmintApiKey?: string;
+  /**
+   * Platform API URL for querying wallet custodian information.
+   * Used to determine if a wallet is managed by Crossmint.
+   * Default: http://localhost:4114
+   */
+  platformApiUrl?: string;
 }
 
 /**

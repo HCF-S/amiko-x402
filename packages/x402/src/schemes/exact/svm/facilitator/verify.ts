@@ -79,18 +79,20 @@ export async function verify(
     // perform transaction introspection to validate the transaction structure and details
     await transactionIntrospection(svmPayload, paymentRequirements, signer, config);
 
-    const allowCustodialWallets = config?.svmConfig?.allowCustodialWallets || false;
+    // Check if transaction is unsigned (has empty signatures object)
+    const isUnsigned = Object.keys(decodedTransaction.signatures || {}).length === 0;
 
-    // For custodial wallets, skip simulation since we can't sign with the facilitator's key
-    // The transaction was already signed by the custodial service (like Crossmint)
-    if (!allowCustodialWallets) {
-      // simulate the transaction to ensure it will execute successfully
+    if (!isUnsigned) {
+      // Only sign and simulate if transaction is already signed
+      // (for signed transactions sent by clients)
       const simulateResult = await signAndSimulateTransaction(signer, decodedTransaction, rpc);
       if (simulateResult.value?.err) {
         throw new Error(`invalid_exact_svm_payload_transaction_simulation_failed`);
       }
     } else {
-      console.log('[verify] Skipping simulation for custodial wallet transaction');
+      // For unsigned transactions (from /prepare endpoint),
+      // skip simulation as we don't have client's signature yet
+      console.log("[verify] Skipping simulation for unsigned transaction");
     }
 
     return {
@@ -263,15 +265,9 @@ export async function verifyTransactionInstructions(
   const expectedMinInstructions = hasTrustlessInstruction ? 4 : 3;
   const expectedMaxInstructions = hasTrustlessInstruction ? 5 : 4;
 
-  // If custodial wallets are allowed, skip strict instruction count validation
-  // Custodial wallets (like Crossmint) may add additional instructions (e.g., SOL transfers for rent)
-  const allowCustodialWallets = config?.svmConfig?.allowCustodialWallets || false;
-
-  if (!allowCustodialWallets) {
-    // Validate the number of expected instructions
-    if (instructionCount < expectedMinInstructions || instructionCount > expectedMaxInstructions) {
-      throw new Error(`invalid_exact_svm_payload_transaction_instructions_length`);
-    }
+  // Validate the number of expected instructions
+  if (instructionCount < expectedMinInstructions || instructionCount > expectedMaxInstructions) {
+    throw new Error(`invalid_exact_svm_payload_transaction_instructions_length`);
   }
 
   // Verify that the compute limit and price instructions are valid
@@ -304,19 +300,7 @@ export async function verifyTransactionInstructions(
     ? instructionCount === 5
     : instructionCount === 4;
 
-  // If custodial wallets are allowed, we need to be more flexible with instruction detection
-  // Custodial wallets may add additional instructions, so we can't rely on instruction count alone
-  if (allowCustodialWallets) {
-    console.log(`[verify] allowCustodialWallets=true, trusting custodial wallet transaction structure`);
-    console.log(`[verify] Transaction has ${transactionMessage.instructions.length} instructions`);
-    // For custodial wallets (like Crossmint), we trust that the signed transaction is valid
-    // Custodial wallets may use wrapper programs (like Smart Turbo) instead of direct token programs
-    // Since the transaction is already signed by the custodial service, we don't need to verify
-    // the detailed instruction structure - just that it exists and was properly signed
-    console.log(`[verify] Custodial wallet verification passed - trusting signed transaction`);
-    // Early return - no need to validate individual instructions for custodial wallets
-    return;
-  } else if (hasCreateATA) {
+  if (hasCreateATA) {
     // Verify that the create ATA instruction is valid
     verifyCreateATAInstruction(transactionMessage.instructions[2], paymentRequirements);
     // Verify that the transfer instruction is valid
