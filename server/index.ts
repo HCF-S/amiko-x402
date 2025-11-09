@@ -6,6 +6,7 @@ import { type Resource, type SolanaAddress } from "x402-hono";
 import { createHealthRoute } from "./routes/health.js";
 import { createTimeRoutes } from "./routes/time.js";
 import { createOsintRoute } from "./routes/osint.js";
+import { createSearchRoute } from "./routes/search.js";
 config();
 
 const facilitatorUrl = process.env.FACILITATOR_URL as Resource;
@@ -80,6 +81,13 @@ app.route("/", createOsintRoute({
   baseSepolia: baseSepoliaConfig,
 }));
 
+app.route("/", createSearchRoute({
+  solanaMainnet: solanaMainnetConfig,
+  solanaDevnet: solanaDevnetConfig,
+  baseMainnet: baseMainnetConfig,
+  baseSepolia: baseSepoliaConfig,
+}));
+
 // Start server
 console.log(`🚀 Amiko x402 Server running at http://localhost:${PORT}`);
 console.log(`Facilitator: ${facilitatorUrl}`);
@@ -88,22 +96,30 @@ console.log(`\nAvailable endpoints:`);
 
 if (solanaMainnetConfig) {
   console.log(`  GET /time - Current UTC time ($0.01) [Solana Mainnet]`);
-  console.log(`  POST /osint/:handle - Twitter OSINT analysis ($1.00) [Solana Mainnet]`);
+  console.log(`  POST /osint/:handle - Twitter OSINT analysis ($0.10) [Solana Mainnet]`);
+  console.log(`  GET /search?q=query - Web search using Exa ($0.02) [Solana Mainnet]`);
+  console.log(`  GET /read?url=example.com - Read webpage content ($0.02) [Solana Mainnet]`);
 }
 
 if (solanaDevnetConfig) {
   console.log(`  GET /solana-devnet/time - Current UTC time ($0.01) [Solana Devnet]`);
-  console.log(`  POST /solana-devnet/osint/:handle - Twitter OSINT analysis ($1.00) [Solana Devnet]`);
+  console.log(`  POST /solana-devnet/osint/:handle - Twitter OSINT analysis ($0.10) [Solana Devnet]`);
+  console.log(`  GET /solana-devnet/search?q=query - Web search using Exa ($0.02) [Solana Devnet]`);
+  console.log(`  GET /solana-devnet/read?url=example.com - Read webpage content ($0.02) [Solana Devnet]`);
 }
 
 if (baseMainnetConfig) {
   console.log(`  GET /base/time - Current UTC time ($0.01) [Base Mainnet]`);
-  console.log(`  POST /base/osint/:handle - Twitter OSINT analysis ($1.00) [Base Mainnet]`);
+  console.log(`  POST /base/osint/:handle - Twitter OSINT analysis ($0.10) [Base Mainnet]`);
+  console.log(`  GET /base/search?q=query - Web search using Exa ($0.02) [Base Mainnet]`);
+  console.log(`  GET /base/read?url=example.com - Read webpage content ($0.02) [Base Mainnet]`);
 }
 
 if (baseSepoliaConfig) {
   console.log(`  GET /base-sepolia/time - Current UTC time ($0.01) [Base Sepolia]`);
-  console.log(`  POST /base-sepolia/osint/:handle - Twitter OSINT analysis ($1.00) [Base Sepolia]`);
+  console.log(`  POST /base-sepolia/osint/:handle - Twitter OSINT analysis ($0.10) [Base Sepolia]`);
+  console.log(`  GET /base-sepolia/search?q=query - Web search using Exa ($0.02) [Base Sepolia]`);
+  console.log(`  GET /base-sepolia/read?url=example.com - Read webpage content ($0.02) [Base Sepolia]`);
 }
 
 serve({

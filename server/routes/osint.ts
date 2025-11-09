@@ -31,7 +31,7 @@ export function createOsintRoute(config: OsintConfig) {
     }
   });
 
-  // Solana Mainnet OSINT endpoint - analyzes Twitter user profile - costs $1.00
+  // Solana Mainnet OSINT endpoint - analyzes Twitter user profile - costs $0.10
   if (config.solanaMainnet) {
     app.post(
       "/osint/:handle",
@@ -39,7 +39,7 @@ export function createOsintRoute(config: OsintConfig) {
         config.solanaMainnet.address,
         {
           "POST /osint/*": {
-            price: "$1.00",
+            price: "$0.10",
             network: config.solanaMainnet.network as Network,
           },
         },
@@ -63,7 +63,7 @@ export function createOsintRoute(config: OsintConfig) {
     );
   }
 
-  // Solana Devnet OSINT endpoint - analyzes Twitter user profile - costs $1.00
+  // Solana Devnet OSINT endpoint - analyzes Twitter user profile - costs $0.10
   if (config.solanaDevnet) {
     app.post(
       "/solana-devnet/osint/:handle",
@@ -71,7 +71,7 @@ export function createOsintRoute(config: OsintConfig) {
         config.solanaDevnet.address,
         {
           "POST /solana-devnet/osint/*": {
-            price: "$1.00",
+            price: "$0.10",
             network: config.solanaDevnet.network as Network,
           },
         },
@@ -96,7 +96,7 @@ export function createOsintRoute(config: OsintConfig) {
     );
   }
 
-  // Base Mainnet OSINT endpoint - analyzes Twitter user profile - costs $1.00
+  // Base Mainnet OSINT endpoint - analyzes Twitter user profile - costs $0.10
   if (config.baseMainnet) {
     app.post(
       "/base/osint/:handle",
@@ -104,7 +104,7 @@ export function createOsintRoute(config: OsintConfig) {
         config.baseMainnet.address,
         {
           "POST /base/osint/*": {
-            price: "$1.00",
+            price: "$0.10",
             network: config.baseMainnet.network as Network,
           },
         },
@@ -123,7 +123,7 @@ export function createOsintRoute(config: OsintConfig) {
     );
   }
 
-  // Base Sepolia OSINT endpoint - analyzes Twitter user profile - costs $1.00
+  // Base Sepolia OSINT endpoint - analyzes Twitter user profile - costs $0.10
   if (config.baseSepolia) {
     app.post(
       "/base-sepolia/osint/:handle",
@@ -131,7 +131,7 @@ export function createOsintRoute(config: OsintConfig) {
         config.baseSepolia.address,
         {
           "POST /base-sepolia/osint/*": {
-            price: "$1.00",
+            price: "$0.10",
             network: config.baseSepolia.network as Network,
           },
         },

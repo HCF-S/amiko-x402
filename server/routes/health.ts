@@ -28,9 +28,23 @@ export function createHealthRoute(config: NetworkConfig) {
       endpoints.solanaMainnetOsint = {
         path: "/osint/:handle",
         method: "POST",
-        cost: "$1.00",
+        cost: "$0.10",
         network: "solana",
         description: "Twitter OSINT analysis (Solana Mainnet)",
+      };
+      endpoints.solanaMainnetSearch = {
+        path: "/search?q=query",
+        method: "GET",
+        cost: "$0.02",
+        network: "solana",
+        description: "Web search using Exa (Solana Mainnet)",
+      };
+      endpoints.solanaMainnetRead = {
+        path: "/read?url=example.com",
+        method: "GET",
+        cost: "$0.02",
+        network: "solana",
+        description: "Read webpage content (Solana Mainnet)",
       };
     }
 
@@ -45,9 +59,23 @@ export function createHealthRoute(config: NetworkConfig) {
       endpoints.solanaDevnetOsint = {
         path: "/solana-devnet/osint/:handle",
         method: "POST",
-        cost: "$1.00",
+        cost: "$0.10",
         network: "solana-devnet",
         description: "Twitter OSINT analysis (Solana Devnet)",
+      };
+      endpoints.solanaDevnetSearch = {
+        path: "/solana-devnet/search?q=query",
+        method: "GET",
+        cost: "$0.02",
+        network: "solana-devnet",
+        description: "Web search using Exa (Solana Devnet)",
+      };
+      endpoints.solanaDevnetRead = {
+        path: "/solana-devnet/read?url=example.com",
+        method: "GET",
+        cost: "$0.02",
+        network: "solana-devnet",
+        description: "Read webpage content (Solana Devnet)",
       };
     }
 
@@ -62,9 +90,23 @@ export function createHealthRoute(config: NetworkConfig) {
       endpoints.baseMainnetOsint = {
         path: "/base/osint/:handle",
         method: "POST",
-        cost: "$1.00",
+        cost: "$0.10",
         network: "base",
         description: "Twitter OSINT analysis (Base Mainnet)",
+      };
+      endpoints.baseMainnetSearch = {
+        path: "/base/search?q=query",
+        method: "GET",
+        cost: "$0.02",
+        network: "base",
+        description: "Web search using Exa (Base Mainnet)",
+      };
+      endpoints.baseMainnetRead = {
+        path: "/base/read?url=example.com",
+        method: "GET",
+        cost: "$0.02",
+        network: "base",
+        description: "Read webpage content (Base Mainnet)",
       };
     }
 
@@ -79,9 +121,23 @@ export function createHealthRoute(config: NetworkConfig) {
       endpoints.baseSepoliaOsint = {
         path: "/base-sepolia/osint/:handle",
         method: "POST",
-        cost: "$1.00",
+        cost: "$0.10",
         network: "base-sepolia",
         description: "Twitter OSINT analysis (Base Sepolia)",
+      };
+      endpoints.baseSepoliaSearch = {
+        path: "/base-sepolia/search?q=query",
+        method: "GET",
+        cost: "$0.02",
+        network: "base-sepolia",
+        description: "Web search using Exa (Base Sepolia)",
+      };
+      endpoints.baseSepoliaRead = {
+        path: "/base-sepolia/read?url=example.com",
+        method: "GET",
+        cost: "$0.02",
+        network: "base-sepolia",
+        description: "Read webpage content (Base Sepolia)",
       };
     }
 
