@@ -30,6 +30,10 @@ import {
   getTokenPayerFromTransaction,
   signTransactionWithSigner,
 } from "../../../../shared/svm";
+import {
+  isWalletCrossmint,
+  signTransactionWithCrossmint as signWithCrossmintAPI,
+} from "../../../../shared/svm/crossmint-signer";
 import { getRpcClient, getRpcSubscriptions } from "../../../../shared/svm/rpc";
 import {
   createBlockHeightExceedencePromiseFactory,
@@ -67,19 +71,44 @@ export async function settle(
   const svmPayload = payload.payload as ExactSvmPayload;
   const decodedTransaction = decodeTransactionFromPayload(svmPayload);
 
-  const allowCustodialWallets = config?.svmConfig?.allowCustodialWallets || false;
+  // Extract payer address to check if it's a Crossmint wallet
+  const payer = getTokenPayerFromTransaction(decodedTransaction);
 
-  // For custodial wallets, the transaction is already signed by the custodial service (like Crossmint)
-  // Don't attempt to sign it again with the facilitator's key
-  const signedTransaction = allowCustodialWallets
-    ? decodedTransaction
-    : await signTransactionWithSigner(signer, decodedTransaction);
+  // Check if this is a Crossmint wallet by querying the platform API
+  const platformApiUrl = config?.svmConfig?.platformApiUrl || 'http://localhost:4114';
+  const crossmintApiKey = config?.svmConfig?.crossmintApiKey;
 
-  // For custodial wallets, skip the full signature check - they provide only the signatures they need to
-  if (!allowCustodialWallets) {
-    assertTransactionFullySigned(signedTransaction);
+  let signedTransaction: Transaction;
+  const isCrossmint = crossmintApiKey
+    ? await isWalletCrossmint(payer, platformApiUrl)
+    : false;
+
+  if (isCrossmint && crossmintApiKey) {
+    // Sign with Crossmint API for custodial wallets
+    console.log(`[settle] Wallet ${payer} is Crossmint-managed, signing with Crossmint API`);
+    signedTransaction = await signWithCrossmintAPI(payer, decodedTransaction, crossmintApiKey);
+
+    // Check if Crossmint already submitted the transaction
+    if ((signedTransaction as any)._crossmintSubmitted) {
+      const signature = (signedTransaction as any)._crossmintSignature;
+      console.log(`[settle] Crossmint already submitted transaction: ${signature}`);
+
+      return {
+        success: true,
+        payer,
+        transaction: signature,
+        network: payload.network,
+      };
+    }
+  } else {
+    // For non-Crossmint wallets, the transaction should already be signed by the client
+    // The unsigned transaction we received was sent back to the client who signed it
+    console.log(`[settle] Wallet ${payer} is not Crossmint-managed, expecting client-signed transaction`);
+    signedTransaction = decodedTransaction;
   }
-  const payer = getTokenPayerFromTransaction(signedTransaction);
+
+  // Verify transaction is fully signed
+  assertTransactionFullySigned(signedTransaction);
 
   const rpc = getRpcClient(paymentRequirements.network, config?.svmConfig?.rpcUrl);
   const rpcSubscriptions = getRpcSubscriptions(
@@ -107,7 +136,7 @@ export async function settle(
     };
   } catch (error) {
     console.error("Unexpected error during transaction settlement:", error);
-    
+
     // Extract job ID even on error for potential retry scenarios
     const jobId = extractJobIdFromTransaction(signedTransaction);
     

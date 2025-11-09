@@ -84,10 +84,14 @@ export async function signTransactionWithCrossmint(
 
   console.log(`[crossmint-signer] Transaction requires ${numRequiredSignatures} signatures`);
 
-  // Create VersionedTransaction with empty signature placeholders
+  // Check if transaction already has signatures (e.g., facilitator already signed for trustless)
+  const existingSignatures = unsignedTransaction.signatures || [];
+  const hasExistingSignatures = existingSignatures.length > 0 && existingSignatures.some((sig: Uint8Array) => sig.some((byte: number) => byte !== 0));
+
+  // Create VersionedTransaction with signature placeholders
   // VersionedTransaction format:
   // 1 byte: number of signatures (compact-u16 encoding)
-  // 64 bytes per signature (empty placeholders)
+  // 64 bytes per signature (may be existing or empty placeholders)
   // N bytes: the transaction message
 
   const signatureBytes = numRequiredSignatures * 64;
@@ -96,13 +100,19 @@ export async function signTransactionWithCrossmint(
   // Write signature count
   versionedTxBytes[0] = numRequiredSignatures;
 
-  // Empty signatures are already zeros from new Uint8Array()
-  // Bytes 1 through (1 + signatureBytes - 1) are the signature placeholders
+  // If transaction has existing signatures (from facilitator), copy them
+  // Otherwise, leave as empty (zeros from new Uint8Array())
+  if (hasExistingSignatures) {
+    console.log(`[crossmint-signer] Transaction has ${existingSignatures.length} existing signatures, preserving them`);
+    for (let i = 0; i < existingSignatures.length && i < numRequiredSignatures; i++) {
+      versionedTxBytes.set(existingSignatures[i], 1 + (i * 64));
+    }
+  }
 
   // Write the transaction message after the signatures
   versionedTxBytes.set(messageBytes, 1 + signatureBytes);
 
-  console.log(`[crossmint-signer] Created VersionedTransaction with ${numRequiredSignatures} signature placeholders`);
+  console.log(`[crossmint-signer] Created VersionedTransaction with ${numRequiredSignatures} signature slots (${hasExistingSignatures ? 'with existing signatures' : 'empty'})`);
   console.log(`[crossmint-signer] VersionedTransaction length: ${versionedTxBytes.length}`);
 
   // Convert to base58 for Crossmint API

@@ -34,12 +34,16 @@ if (!BASE_MAINNET_PRIVATE_KEY && !BASE_SEPOLIA_PRIVATE_KEY && !SVM_PRIVATE_KEY) 
   process.exit(1);
 }
 
+const CROSSMINT_API_KEY = process.env.CROSSMINT_API_KEY;
+const AMIKO_PLATFORM_API_URL = process.env.AMIKO_PLATFORM_API_URL || 'http://localhost:4114';
+
 // Helper to get X402 config for a specific network
 const getX402Config = (network: string): X402Config | undefined => {
-  // Always allow custodial wallets (like Crossmint) which may add extra instructions
+  // Configure Crossmint API key and platform API URL for wallet lookup
   const baseConfig = {
     svmConfig: {
-      allowCustodialWallets: true,
+      crossmintApiKey: CROSSMINT_API_KEY,
+      platformApiUrl: AMIKO_PLATFORM_API_URL,
     },
   };
 
