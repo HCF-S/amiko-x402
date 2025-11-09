@@ -157,7 +157,7 @@ async function syncAgentEndpoints(agentWallet: string, metadataJson: any) {
 /**
  * Fetch agent account and sync to database
  */
-export async function syncAgentAccount(program: Program, agentPubkey: PublicKey) {
+export async function syncAgentAccount(program: Program, agentPubkey: PublicKey, syncServices = false) {
   const walletAddress = agentPubkey.toBase58();
   console.log(`🔍 Fetching agent account: ${walletAddress}`);
 
@@ -275,7 +275,7 @@ async function startEventListener() {
         console.log(`${emoji} Agent activity detected: ${agentPubkey.toBase58()}`);
         
         // Fetch and sync the full account data
-        await syncAgentAccount(program, agentPubkey);
+        await syncAgentAccount(program, agentPubkey, true);
       } else {
         console.log('⚠️  Could not extract agent address from logs');
       }
