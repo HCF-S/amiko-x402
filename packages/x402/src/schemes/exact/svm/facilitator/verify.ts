@@ -248,11 +248,20 @@ export async function verifyTransactionInstructions(
   verifyComputeLimitInstruction(transactionMessage.instructions[0]);
   verifyComputePriceInstruction(transactionMessage.instructions[1]);
 
+  // Determine if there's a create_ata instruction to check later
+  const hasCreateATA = hasTrustlessInstruction
+    ? instructionCount === 5
+    : instructionCount === 4;
+
   // Verify that the fee payer is not included in any instruction's accounts
-  // (except for the trustless register_job instruction which may include the fee payer)
+  // Exceptions:
+  // - create_ata instruction: fee payer is the payer account that funds the ATA creation
+  // - trustless register_job instruction: fee payer may be included
   transactionMessage.instructions.forEach((instruction, index) => {
     const isTrustlessInstruction = hasTrustlessInstruction && index === instructionCount - 1;
-    if (!isTrustlessInstruction) {
+    const isCreateATAInstruction = hasCreateATA && index === 2;
+    
+    if (!isTrustlessInstruction && !isCreateATAInstruction) {
       if (instruction.accounts?.some(account => account.address === signer.address)) {
         throw new Error(
           `invalid_exact_svm_payload_transaction_fee_payer_included_in_instruction_accounts`,
@@ -261,13 +270,9 @@ export async function verifyTransactionInstructions(
     }
   });
 
-  // Determine the transfer instruction index based on whether create_ata is present
+  // Verify instructions based on whether create_ata is present
   // Without create_ata: transfer is at index 2
   // With create_ata: create_ata is at index 2, transfer is at index 3
-  const hasCreateATA = hasTrustlessInstruction
-    ? instructionCount === 5
-    : instructionCount === 4;
-
   if (hasCreateATA) {
     // Verify that the create ATA instruction is valid
     verifyCreateATAInstruction(transactionMessage.instructions[2], paymentRequirements);
