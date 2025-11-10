@@ -33,12 +33,12 @@ export function createOsintRoute(config: OsintConfig) {
 
   // Solana Mainnet OSINT endpoint - analyzes Twitter user profile - costs $0.10
   if (config.solanaMainnet) {
-    app.post(
+    app.get(
       "/osint/:handle",
       paymentMiddleware(
         config.solanaMainnet.address,
         {
-          "POST /osint/*": {
+          "GET /osint/*": {
             price: "$0.10",
             network: config.solanaMainnet.network as Network,
           },
@@ -65,12 +65,12 @@ export function createOsintRoute(config: OsintConfig) {
 
   // Solana Devnet OSINT endpoint - analyzes Twitter user profile - costs $0.10
   if (config.solanaDevnet) {
-    app.post(
+    app.get(
       "/solana-devnet/osint/:handle",
       paymentMiddleware(
         config.solanaDevnet.address,
         {
-          "POST /solana-devnet/osint/*": {
+          "GET /solana-devnet/osint/*": {
             price: "$0.10",
             network: config.solanaDevnet.network as Network,
           },
@@ -98,12 +98,12 @@ export function createOsintRoute(config: OsintConfig) {
 
   // Base Mainnet OSINT endpoint - analyzes Twitter user profile - costs $0.10
   if (config.baseMainnet) {
-    app.post(
+    app.get(
       "/base/osint/:handle",
       paymentMiddleware(
         config.baseMainnet.address,
         {
-          "POST /base/osint/*": {
+          "GET /base/osint/*": {
             price: "$0.10",
             network: config.baseMainnet.network as Network,
           },
@@ -125,12 +125,12 @@ export function createOsintRoute(config: OsintConfig) {
 
   // Base Sepolia OSINT endpoint - analyzes Twitter user profile - costs $0.10
   if (config.baseSepolia) {
-    app.post(
+    app.get(
       "/base-sepolia/osint/:handle",
       paymentMiddleware(
         config.baseSepolia.address,
         {
-          "POST /base-sepolia/osint/*": {
+          "GET /base-sepolia/osint/*": {
             price: "$0.10",
             network: config.baseSepolia.network as Network,
           },
