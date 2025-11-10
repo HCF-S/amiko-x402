@@ -31,11 +31,26 @@ async function syncJobRecord(program: Program, jobPubkey: PublicKey, transaction
     // @ts-ignore - Anchor types
     const jobAccount = await program.account.jobRecord.fetch(jobPubkey);
 
+    const agentWallet = jobAccount.agentWallet.toBase58();
+
+    // Check if agent exists in database
+    const existingAgent = await prisma.agent.findUnique({
+      where: { wallet: agentWallet },
+    });
+
+    if (!existingAgent) {
+      console.log(`🤖 Agent not found in database, syncing auto-created agent: ${agentWallet}`);
+      // Sync as auto-created agent with default values
+      await syncAgentAccount(program, jobAccount.agentWallet, true);
+    } else {
+      console.log(`✓ Agent exists in database: ${agentWallet}`);
+    }
+
     // Convert BN and Pubkey to strings
     const jobData = {
       id: jobPubkey.toBase58(),
       client_wallet: jobAccount.clientWallet.toBase58(),
-      agent_wallet: jobAccount.agentWallet.toBase58(),
+      agent_wallet: agentWallet,
       payment_amount: jobAccount.paymentAmount,
       created_at_chain: new Date((jobAccount.createdAt as BN).toNumber() * 1000),
       transaction: transaction || undefined,
@@ -54,7 +69,7 @@ async function syncJobRecord(program: Program, jobPubkey: PublicKey, transaction
     console.log(`✅ Synced job: ${jobData.id}`);
     
     // Sync agent account to update job_count
-    console.log(`🔄 Updating agent stats for: ${jobData.agent_wallet}`);
+    console.log(`🔄 Updating agent stats for: ${agentWallet}`);
     await syncAgentAccount(program, jobAccount.agentWallet);
   } catch (error) {
     console.error(`❌ Error syncing job ${jobId}:`, error);

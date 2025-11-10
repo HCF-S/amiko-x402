@@ -113,7 +113,7 @@ export default function AgentsPage() {
         {!isLoading && !error && agents.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {agents.map((agent: Agent) => (
-              <Card key={agent.wallet} className="hover:shadow-lg transition-shadow">
+              <Card key={agent.wallet} className="hover:shadow-lg transition-shadow flex flex-col">
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -124,7 +124,7 @@ export default function AgentsPage() {
                         {formatAddress(agent.wallet)}
                       </CardDescription>
                     </div>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 items-center">
                       {agent.active ? (
                         <Badge variant="default" className="bg-green-500">
                           Active
@@ -138,35 +138,35 @@ export default function AgentsPage() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  {agent.description && (
-                    <p className="text-sm text-gray-600 mb-4 line-clamp-3">
-                      {agent.description}
+                <CardContent className="flex-1 flex flex-col">
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-600 line-clamp-3 h-16">
+                      {agent.description ?? 'N/A'}
                     </p>
-                  )}
-                  
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-500">Rating:</span>
-                      <span className="font-medium">
-                        {agent.avg_rating > 0 
-                          ? `⭐ ${agent.avg_rating.toFixed(2)}`
-                          : 'No ratings yet'}
-                      </span>
-                    </div>
                     
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-500">Jobs:</span>
-                      <span className="font-medium">
-                        {agent.job_count ? agent.job_count : 'None'}
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-500">Registered:</span>
-                      <span className="font-medium">
-                        {formatDate(agent.created_at)}
-                      </span>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-500">Rating:</span>
+                        <span className="font-medium">
+                          {agent.avg_rating > 0 
+                            ? `⭐ ${agent.avg_rating.toFixed(2)}`
+                            : 'No ratings yet'}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-500">Jobs:</span>
+                        <span className="font-medium">
+                          {agent.job_count ? agent.job_count : 'None'}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-500">Registered:</span>
+                        <span className="font-medium">
+                          {formatDate(agent.created_at)}
+                        </span>
+                      </div>
                     </div>
                   </div>
 

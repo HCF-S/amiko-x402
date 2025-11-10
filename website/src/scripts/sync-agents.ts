@@ -37,11 +37,11 @@ async function fetchMetadata(uri: string): Promise<any> {
 /**
  * Fetch x402 payment info from endpoint
  */
-async function fetchX402Info(url: string): Promise<any | null> {
+async function fetchX402Info(url: string, method: string = 'GET'): Promise<any | null> {
   try {
-    console.log(`  🔍 Checking x402 endpoint: ${url}`);
+    console.log(`  🔍 Checking x402 endpoint: ${url} (${method})`);
     const response = await fetch(url, {
-      method: 'GET',
+      method: method.toUpperCase(),
       headers: {
         'Accept': 'application/json',
       },
@@ -100,7 +100,7 @@ async function syncAgentEndpoints(agentWallet: string, metadataJson: any) {
 
     try {
       // Fetch x402 payment info
-      const x402Info = await fetchX402Info(endpoint.url);
+      const x402Info = await fetchX402Info(endpoint.url, endpoint.method || 'GET');
 
       if (!x402Info) {
         console.log(`  ⚠️  Skipping non-x402 endpoint: ${endpoint.url}`);
@@ -157,7 +157,7 @@ async function syncAgentEndpoints(agentWallet: string, metadataJson: any) {
 /**
  * Fetch agent account and sync to database
  */
-export async function syncAgentAccount(program: Program, agentPubkey: PublicKey, syncServices = false) {
+export async function syncAgentAccount(program: Program, agentPubkey: PublicKey, isAutoCreated: boolean = false) {
   const walletAddress = agentPubkey.toBase58();
   console.log(`🔍 Fetching agent account: ${walletAddress}`);
 
@@ -183,6 +183,10 @@ export async function syncAgentAccount(program: Program, agentPubkey: PublicKey,
     // Get wallet address from account data
     const wallet = accountData.wallet.toBase58();
 
+    // Use default values for auto-created agents
+    const defaultName = isAutoCreated ? 'No Name Agent' : null;
+    const defaultDescription = isAutoCreated ? 'This agent is auto created by job registry' : null;
+
     // Upsert agent in database
     const agent = await prisma.agent.upsert({
       where: { wallet },
@@ -190,8 +194,8 @@ export async function syncAgentAccount(program: Program, agentPubkey: PublicKey,
         wallet,
         metadata_uri: accountData.metadataUri || null,
         metadata_json: metadataJson,
-        name: metadataJson?.name,
-        description: metadataJson?.description,
+        name: metadataJson?.name || defaultName,
+        description: metadataJson?.description || defaultDescription,
         active: accountData.active,
         auto_created: accountData.autoCreated,
         total_weighted_rating: accountData.totalWeightedRating.toString(),
@@ -204,8 +208,8 @@ export async function syncAgentAccount(program: Program, agentPubkey: PublicKey,
       update: {
         metadata_uri: accountData.metadataUri || null,
         metadata_json: metadataJson,
-        name: metadataJson?.name,
-        description: metadataJson?.description,
+        name: metadataJson?.name || defaultName,
+        description: metadataJson?.description || defaultDescription,
         active: accountData.active,
         total_weighted_rating: accountData.totalWeightedRating.toString(),
         total_weight: accountData.totalWeight.toString(),
@@ -262,6 +266,25 @@ async function startEventListener() {
     PROGRAM_ID,
     async (logs) => {
       console.log('📋 Program log received');
+      
+      // Check for auto-created agent message
+      const autoCreatedMatch = logs.logs.find(log => 
+        log.includes('Agent Account Auto Created:')
+      );
+      
+      if (autoCreatedMatch) {
+        // Extract agent wallet address from the log message
+        // Format: "Program log: Agent Account Auto Created: <agent_wallet_pubkey>"
+        const match = autoCreatedMatch.match(/Agent Account Auto Created: ([A-Za-z0-9]+)/);
+        if (match && match[1]) {
+          const agentWallet = new PublicKey(match[1]);
+          console.log(`🤖 Auto-created agent detected: ${agentWallet.toBase58()}`);
+          
+          // Fetch and sync with default values for auto-created agents
+          await syncAgentAccount(program, agentWallet, true);
+          return;
+        }
+      }
       
       // Extract agent address and instruction from logs
       const result = matchInstructionsGetData(logs.logs, ['RegisterAgent', 'UpdateAgent', 'DeactivateAgent']);

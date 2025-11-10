@@ -435,7 +435,7 @@ async function createRegisterJobInstruction(
       { address: paymentTxAddress, role: 0 }, // payment_tx (readonly, unique job identifier)
       { address: address("Sysvar1nstructions1111111111111111111111111"), role: 0 }, // instruction_sysvar
       { address: client.address, role: 2 }, // client_wallet (signer)
-      { address: feePayer, role: 3 }, // fee_payer (signer + writable)
+      { address: feePayer, role: 3 }, // fee_payer (signer + writable, pays for job_record and agent PDA creation)
       { address: address("11111111111111111111111111111111"), role: 0 }, // system_program
       { address: tokenProgramAddress, role: 0 }, // token_program (readonly)
     ],
