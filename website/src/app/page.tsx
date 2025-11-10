@@ -7,7 +7,7 @@ export default function Home() {
     <div className="min-h-screen">
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
+          <div className="text-center mt-20 mb-12">
             <h1 className="text-4xl font-bold mb-4">
               Trustless Agent Protocol for Solana
             </h1>

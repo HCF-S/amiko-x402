@@ -339,7 +339,7 @@ export default function MyAgentPage() {
 
           {!publicKey && (
             <Card className="mb-6 border-destructive">
-              <CardContent className="pt-6">
+              <CardContent>
                 <p className="text-destructive font-medium">
                   Please connect your wallet
                 </p>

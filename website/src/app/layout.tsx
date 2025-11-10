@@ -32,12 +32,10 @@ export default function RootLayout({
       >
         <SolanaWalletProvider>
           <Header />
-          <div className="bg-gradient-to-b from-gray-50 to-white">
-            <div className="pt-16 max-w-6xl mx-auto px-4 flex-1">
-              {children}
-            </div>
-            <Footer />
+          <div className="pt-24 max-w-6xl mx-auto px-4 flex-1">
+            {children}
           </div>
+          <Footer />
         </SolanaWalletProvider>
       </body>
     </html>
