@@ -25,6 +25,13 @@ export function createHealthRoute(config: NetworkConfig) {
         network: "solana",
         description: "Get current UTC time (Solana Mainnet)",
       };
+      endpoints.solanaMainnetWeather = {
+        path: "/weather?location=city",
+        method: "GET",
+        cost: "$0.02",
+        network: "solana",
+        description: "Weather information (Solana Mainnet)",
+      };
       endpoints.solanaMainnetOsint = {
         path: "/osint/:handle",
         method: "GET",
@@ -55,6 +62,13 @@ export function createHealthRoute(config: NetworkConfig) {
         cost: "$0.01",
         network: "solana-devnet",
         description: "Get current UTC time (Solana Devnet)",
+      };
+      endpoints.solanaDevnetWeather = {
+        path: "/solana-devnet/weather?location=city",
+        method: "GET",
+        cost: "$0.02",
+        network: "solana-devnet",
+        description: "Weather information (Solana Devnet)",
       };
       endpoints.solanaDevnetOsint = {
         path: "/solana-devnet/osint/:handle",
@@ -87,6 +101,13 @@ export function createHealthRoute(config: NetworkConfig) {
         network: "base",
         description: "Get current UTC time (Base Mainnet)",
       };
+      endpoints.baseMainnetWeather = {
+        path: "/base/weather?location=city",
+        method: "GET",
+        cost: "$0.02",
+        network: "base",
+        description: "Weather information (Base Mainnet)",
+      };
       endpoints.baseMainnetOsint = {
         path: "/base/osint/:handle",
         method: "GET",
@@ -117,6 +138,13 @@ export function createHealthRoute(config: NetworkConfig) {
         cost: "$0.01",
         network: "base-sepolia",
         description: "Get current UTC time (Base Sepolia)",
+      };
+      endpoints.baseSepoliaWeather = {
+        path: "/base-sepolia/weather?location=city",
+        method: "GET",
+        cost: "$0.02",
+        network: "base-sepolia",
+        description: "Weather information (Base Sepolia)",
       };
       endpoints.baseSepoliaOsint = {
         path: "/base-sepolia/osint/:handle",

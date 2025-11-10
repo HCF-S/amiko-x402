@@ -5,6 +5,7 @@ import { type Resource, type SolanaAddress } from "x402-hono";
 
 import { createHealthRoute } from "./routes/health.js";
 import { createTimeRoutes } from "./routes/time.js";
+import { createWeatherRoutes } from "./routes/weather.js";
 import { createOsintRoute } from "./routes/osint.js";
 import { createSearchRoute } from "./routes/search.js";
 config();
@@ -74,6 +75,13 @@ app.route("/", createTimeRoutes({
   baseSepolia: baseSepoliaConfig,
 }));
 
+app.route("/", createWeatherRoutes({
+  solanaMainnet: solanaMainnetConfig,
+  solanaDevnet: solanaDevnetConfig,
+  baseMainnet: baseMainnetConfig,
+  baseSepolia: baseSepoliaConfig,
+}));
+
 app.route("/", createOsintRoute({
   solanaMainnet: solanaMainnetConfig,
   solanaDevnet: solanaDevnetConfig,
@@ -96,6 +104,7 @@ console.log(`\nAvailable endpoints:`);
 
 if (solanaMainnetConfig) {
   console.log(`  GET /time - Current UTC time ($0.01) [Solana Mainnet]`);
+  console.log(`  GET /weather?location=XXX - Weather information ($0.02) [Solana Mainnet]`);
   console.log(`  GET /osint/:handle - Twitter OSINT analysis ($0.10) [Solana Mainnet]`);
   console.log(`  GET /search?q=query - Web search using Exa ($0.02) [Solana Mainnet]`);
   console.log(`  GET /read?url=example.com - Read webpage content ($0.02) [Solana Mainnet]`);
@@ -103,6 +112,7 @@ if (solanaMainnetConfig) {
 
 if (solanaDevnetConfig) {
   console.log(`  GET /solana-devnet/time - Current UTC time ($0.01) [Solana Devnet]`);
+  console.log(`  GET /solana-devnet/weather?location=XXX - Weather information ($0.02) [Solana Devnet]`);
   console.log(`  GET /solana-devnet/osint/:handle - Twitter OSINT analysis ($0.10) [Solana Devnet]`);
   console.log(`  GET /solana-devnet/search?q=query - Web search using Exa ($0.02) [Solana Devnet]`);
   console.log(`  GET /solana-devnet/read?url=example.com - Read webpage content ($0.02) [Solana Devnet]`);
@@ -110,6 +120,7 @@ if (solanaDevnetConfig) {
 
 if (baseMainnetConfig) {
   console.log(`  GET /base/time - Current UTC time ($0.01) [Base Mainnet]`);
+  console.log(`  GET /base/weather?location=XXX - Weather information ($0.02) [Base Mainnet]`);
   console.log(`  GET /base/osint/:handle - Twitter OSINT analysis ($0.10) [Base Mainnet]`);
   console.log(`  GET /base/search?q=query - Web search using Exa ($0.02) [Base Mainnet]`);
   console.log(`  GET /base/read?url=example.com - Read webpage content ($0.02) [Base Mainnet]`);
@@ -117,6 +128,7 @@ if (baseMainnetConfig) {
 
 if (baseSepoliaConfig) {
   console.log(`  GET /base-sepolia/time - Current UTC time ($0.01) [Base Sepolia]`);
+  console.log(`  GET /base-sepolia/weather?location=XXX - Weather information ($0.02) [Base Sepolia]`);
   console.log(`  GET /base-sepolia/osint/:handle - Twitter OSINT analysis ($0.10) [Base Sepolia]`);
   console.log(`  GET /base-sepolia/search?q=query - Web search using Exa ($0.02) [Base Sepolia]`);
   console.log(`  GET /base-sepolia/read?url=example.com - Read webpage content ($0.02) [Base Sepolia]`);
