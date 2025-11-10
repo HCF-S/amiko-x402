@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useMemo, useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Search, ExternalLink, Star } from 'lucide-react';
+import useSWR from 'swr';
 
 interface FeedbackRecord {
   id: string;
@@ -19,16 +20,27 @@ interface FeedbackRecord {
   updated_at: string;
 }
 
+const fetcher = async (url: string) => {
+  const response = await fetch(url);
+  const data = await response.json();
+  
+  if (!data.success) {
+    throw new Error(data.error || 'Failed to fetch feedbacks');
+  }
+  
+  return data.feedbacks;
+};
+
 function FeedbacksPageContent() {
   const searchParams = useSearchParams();
-  const [feedbacks, setFeedbacks] = useState<FeedbackRecord[]>([]);
-  const [filteredFeedbacks, setFilteredFeedbacks] = useState<FeedbackRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [agentFilter, setAgentFilter] = useState('');
 
+  const { data: feedbacks, error, isLoading } = useSWR<FeedbackRecord[]>('/api/feedbacks', fetcher, {
+    refreshInterval: 10000, // Refresh every 10 seconds
+    revalidateOnFocus: true,
+  });
+
   useEffect(() => {
-    fetchFeedbacks();
     // Set initial filter from URL if present
     const searchParam = searchParams.get('search');
     if (searchParam) {
@@ -36,41 +48,22 @@ function FeedbacksPageContent() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
+  const filteredFeedbacks = useMemo(() => {
+    if (!feedbacks) return [];
+    
     if (agentFilter.trim() === '') {
-      setFilteredFeedbacks(feedbacks);
-    } else {
-      const searchTerm = agentFilter.toLowerCase();
-      const filtered = feedbacks.filter(feedback => 
-        feedback.id.toLowerCase().includes(searchTerm) ||
-        feedback.job_id.toLowerCase().includes(searchTerm) ||
-        feedback.client_wallet.toLowerCase().includes(searchTerm) ||
-        feedback.agent_wallet.toLowerCase().includes(searchTerm) ||
-        (feedback.transaction && feedback.transaction.toLowerCase().includes(searchTerm))
-      );
-      setFilteredFeedbacks(filtered);
+      return feedbacks;
     }
+    
+    const searchTerm = agentFilter.toLowerCase();
+    return feedbacks.filter(feedback => 
+      feedback.id.toLowerCase().includes(searchTerm) ||
+      feedback.job_id.toLowerCase().includes(searchTerm) ||
+      feedback.client_wallet.toLowerCase().includes(searchTerm) ||
+      feedback.agent_wallet.toLowerCase().includes(searchTerm) ||
+      (feedback.transaction && feedback.transaction.toLowerCase().includes(searchTerm))
+    );
   }, [agentFilter, feedbacks]);
-
-  const fetchFeedbacks = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/feedbacks');
-      const data = await response.json();
-
-      if (data.success) {
-        setFeedbacks(data.feedbacks);
-        setFilteredFeedbacks(data.feedbacks);
-      } else {
-        setError(data.error || 'Failed to fetch feedbacks');
-      }
-    } catch (err) {
-      setError('Failed to fetch feedbacks');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
@@ -140,12 +133,12 @@ function FeedbacksPageContent() {
             </div>
 
             <div className="text-sm text-gray-600">
-              Showing {filteredFeedbacks.length} of {feedbacks.length} feedbacks
+              Showing {filteredFeedbacks.length} of {feedbacks?.length || 0} feedbacks
             </div>
           </div>
 
           {/* Loading State */}
-          {loading && (
+          {isLoading && (
             <Card>
               <CardContent className="pt-6">
                 <p className="text-center text-muted-foreground">Loading feedbacks...</p>
@@ -157,13 +150,13 @@ function FeedbacksPageContent() {
           {error && (
             <Card className="border-destructive">
               <CardContent className="pt-6">
-                <p className="text-destructive text-center">{error}</p>
+                <p className="text-destructive text-center">{error.message}</p>
               </CardContent>
             </Card>
           )}
 
           {/* Feedbacks List */}
-          {!loading && !error && (
+          {!isLoading && !error && (
             <div className="space-y-4">
               {filteredFeedbacks.length === 0 ? (
                 <Card>

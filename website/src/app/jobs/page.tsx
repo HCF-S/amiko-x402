@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Search, ExternalLink, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
+import useSWR from 'swr';
 
 interface JobRecord {
   id: string;
@@ -21,52 +22,41 @@ interface JobRecord {
   } | null;
 }
 
+const fetcher = async (url: string) => {
+  const response = await fetch(url);
+  const data = await response.json();
+  
+  if (!data.success) {
+    throw new Error(data.error || 'Failed to fetch jobs');
+  }
+  
+  return data.jobs;
+};
+
 export default function JobsPage() {
   const { publicKey } = useWallet();
-  const [jobs, setJobs] = useState<JobRecord[]>([]);
-  const [filteredJobs, setFilteredJobs] = useState<JobRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [agentFilter, setAgentFilter] = useState('');
+  
+  const { data: jobs, error, isLoading } = useSWR<JobRecord[]>('/api/jobs', fetcher, {
+    refreshInterval: 10000, // Refresh every 10 seconds
+    revalidateOnFocus: true,
+  });
 
-  useEffect(() => {
-    fetchJobs();
-  }, []);
-
-  useEffect(() => {
+  const filteredJobs = useMemo(() => {
+    if (!jobs) return [];
+    
     if (agentFilter.trim() === '') {
-      setFilteredJobs(jobs);
-    } else {
-      const searchTerm = agentFilter.toLowerCase();
-      const filtered = jobs.filter(job => 
-        job.id.toLowerCase().includes(searchTerm) ||
-        job.client_wallet.toLowerCase().includes(searchTerm) ||
-        job.agent_wallet.toLowerCase().includes(searchTerm) ||
-        (job.transaction && job.transaction.toLowerCase().includes(searchTerm))
-      );
-      setFilteredJobs(filtered);
+      return jobs;
     }
+    
+    const searchTerm = agentFilter.toLowerCase();
+    return jobs.filter(job => 
+      job.id.toLowerCase().includes(searchTerm) ||
+      job.client_wallet.toLowerCase().includes(searchTerm) ||
+      job.agent_wallet.toLowerCase().includes(searchTerm) ||
+      (job.transaction && job.transaction.toLowerCase().includes(searchTerm))
+    );
   }, [agentFilter, jobs]);
-
-  const fetchJobs = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/jobs');
-      const data = await response.json();
-
-      if (data.success) {
-        setJobs(data.jobs);
-        setFilteredJobs(data.jobs);
-      } else {
-        setError(data.error || 'Failed to fetch jobs');
-      }
-    } catch (err) {
-      setError('Failed to fetch jobs');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
@@ -123,12 +113,12 @@ export default function JobsPage() {
             </div>
 
             <div className="text-sm text-gray-600">
-              Showing {filteredJobs.length} of {jobs.length} jobs
+              Showing {filteredJobs.length} of {jobs?.length || 0} jobs
             </div>
           </div>
 
           {/* Loading State */}
-          {loading && (
+          {isLoading && (
             <Card>
               <CardContent className="pt-6">
                 <p className="text-center text-muted-foreground">Loading jobs...</p>
@@ -140,13 +130,13 @@ export default function JobsPage() {
           {error && (
             <Card className="border-destructive">
               <CardContent className="pt-6">
-                <p className="text-destructive text-center">{error}</p>
+                <p className="text-destructive text-center">{error.message}</p>
               </CardContent>
             </Card>
           )}
 
           {/* Jobs List */}
-          {!loading && !error && (
+          {!isLoading && !error && (
             <div className="space-y-4">
               {filteredJobs.length === 0 ? (
                 <Card>
