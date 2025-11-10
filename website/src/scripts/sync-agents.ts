@@ -37,11 +37,11 @@ async function fetchMetadata(uri: string): Promise<any> {
 /**
  * Fetch x402 payment info from endpoint
  */
-async function fetchX402Info(url: string): Promise<any | null> {
+async function fetchX402Info(url: string, method: string = 'GET'): Promise<any | null> {
   try {
-    console.log(`  🔍 Checking x402 endpoint: ${url}`);
+    console.log(`  🔍 Checking x402 endpoint: ${url} (${method})`);
     const response = await fetch(url, {
-      method: 'GET',
+      method: method.toUpperCase(),
       headers: {
         'Accept': 'application/json',
       },
@@ -100,7 +100,7 @@ async function syncAgentEndpoints(agentWallet: string, metadataJson: any) {
 
     try {
       // Fetch x402 payment info
-      const x402Info = await fetchX402Info(endpoint.url);
+      const x402Info = await fetchX402Info(endpoint.url, endpoint.method || 'GET');
 
       if (!x402Info) {
         console.log(`  ⚠️  Skipping non-x402 endpoint: ${endpoint.url}`);
