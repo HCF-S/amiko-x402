@@ -120,10 +120,11 @@ export function validateUsername(username: unknown): string {
 async function fetchTwitterUserData(username: string): Promise<{
   user: TwitterUserData | null;
   tweets: TwitterTweetData[];
+  error?: string;
 }> {
   const client = getTwitterClient();
   if (!client) {
-    throw new Error("Twitter API client not configured - X_API_BEARER_TOKEN is missing");
+    return { user: null, tweets: [], error: "service_unavailable" };
   }
 
   try {
@@ -198,15 +199,20 @@ async function fetchTwitterUserData(username: string): Promise<{
 // Main OSINT analysis function
 export async function analyzeTwitterProfile(
   twitterHandle: string
-): Promise<OsintProfile> {
+): Promise<OsintProfile | { message: string }> {
   const startTime = Date.now();
 
   // Validate and clean the Twitter handle
   const cleanHandle = validateUsername(twitterHandle);
 
   // Fetch comprehensive Twitter data
-  const { user: twitterUser, tweets: recentTweets } =
+  const { user: twitterUser, tweets: recentTweets, error } =
     await fetchTwitterUserData(cleanHandle);
+
+  // Check if service is unavailable
+  if (error === "service_unavailable") {
+    return { message: "Service is down" };
+  }
 
   if (!twitterUser) {
     throw new Error(`Twitter user @${cleanHandle} not found`);
