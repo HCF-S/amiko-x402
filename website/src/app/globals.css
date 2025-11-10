@@ -123,8 +123,7 @@
   }
 }
 
-/* Override Solana Wallet Adapter styles */
-.wallet-adapter-button,
+/* Override Solana Wallet Adapter styles - only for main button, not modal buttons */
 .wallet-adapter-button-trigger {
   background-color: #2B7A8B !important;
   border-radius: 9999px !important;
@@ -137,7 +136,6 @@
   line-height: 1.25rem !important;
 }
 
-.wallet-adapter-button:hover:not([disabled]),
 .wallet-adapter-button-trigger:hover:not([disabled]) {
   background-color: #236571 !important;
   box-shadow: 0 6px 16px rgba(43, 122, 139, 0.5) !important;
