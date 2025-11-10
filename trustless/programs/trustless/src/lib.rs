@@ -174,13 +174,23 @@ pub mod trustless {
             let rent = Rent::get()?;
             let lamports = rent.minimum_balance(space);
             
+            // Get PDA seeds for signing
+            let agent_wallet_key = ctx.accounts.agent_wallet.key();
+            let seeds = &[
+                b"agent".as_ref(),
+                agent_wallet_key.as_ref(),
+                &[ctx.bumps.agent_account],
+            ];
+            let signer_seeds = &[&seeds[..]];
+            
             anchor_lang::system_program::create_account(
-                CpiContext::new(
+                CpiContext::new_with_signer(
                     ctx.accounts.system_program.to_account_info(),
                     anchor_lang::system_program::CreateAccount {
-                        from: ctx.accounts.client_wallet.to_account_info(),
+                        from: ctx.accounts.fee_payer.to_account_info(),
                         to: agent_account_info.clone(),
                     },
+                    signer_seeds,
                 ),
                 lamports,
                 space as u64,
@@ -201,7 +211,9 @@ pub mod trustless {
                 job_count: 0,
                 feedback_count: 0,
             };
-            
+
+            msg!("Agent Account Auto Created: {}", ctx.accounts.agent_wallet.key());
+
             // Serialize and write data
             let mut data = agent_account_info.try_borrow_mut_data()?;
             agent_data.try_serialize(&mut &mut data[..])?;
