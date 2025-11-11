@@ -236,6 +236,8 @@ pub mod trustless {
         job_record.payment_amount = payment_amount;
         job_record.created_at = clock.unix_timestamp;
 
+        msg!("Job Registered: {}", job_record_key);
+
         emit!(JobRegistered {
             job_id: job_record_key,  // Use PDA key instead of removed field
             agent_wallet: job_record.agent_wallet,
@@ -283,6 +285,8 @@ pub mod trustless {
             (agent_account.total_weighted_rating as f64 / agent_account.total_weight as f64) as f32;
         agent_account.last_update = clock.unix_timestamp;
         agent_account.feedback_count += 1;
+
+        msg!("Feedback Submitted: {}", ctx.accounts.feedback_record.key());
 
         emit!(FeedbackSubmitted {
             job_id: ctx.accounts.job_record.key(),
