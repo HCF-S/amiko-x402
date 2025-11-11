@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import Image from 'next/image';
 import { WalletButton } from './WalletButton';
 
 export const Header = () => {
@@ -12,12 +13,17 @@ export const Header = () => {
       <div className="max-w-7xl mx-auto">
         <div className="bg-white/95 backdrop-blur-sm rounded-[2rem] shadow-lg border border-gray-200/50 px-6 py-3">
           <div className="flex justify-between items-center">
-            <div className="flex items-center gap-8">
+            <div className="flex items-center gap-2 sm:gap-8">
               <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                <div className="size-8 bg-[#37768B] rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">T</span>
-                </div>
-                <h1 className="text-lg font-bold">Trustless</h1>
+                <Image 
+                  src="/amiko-logo.png" 
+                  alt="Amiko Logo" 
+                  width={32} 
+                  height={32}
+                  className="rounded-lg"
+                />
+                <h1 className="text-lg font-bold sm:hidden">Marketplace</h1>
+                <h1 className="text-lg font-bold hidden sm:block">X402 Marketplace</h1>
               </Link>
               
               <nav className="hidden md:flex items-center gap-6">
