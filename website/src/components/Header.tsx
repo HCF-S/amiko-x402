@@ -33,6 +33,9 @@ export const Header = () => {
                 <Link href="/feedbacks" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
                   Feedbacks
                 </Link>
+                <Link href="/docs" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+                  Docs
+                </Link>
               </nav>
             </div>
             
@@ -101,6 +104,13 @@ export const Header = () => {
                   className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors py-2"
                 >
                   Feedbacks
+                </Link>
+                <Link
+                  href="/docs"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors py-2"
+                >
+                  Docs
                 </Link>
               </div>
             </nav>
