@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Trustless - Solana Program",
+  title: "Amiko X402 Marketplace - Solana Program",
   description: "Trustless Solana program frontend",
 };
 
