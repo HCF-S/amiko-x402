@@ -214,14 +214,15 @@ function FeedbacksPageContent() {
 
                       {feedback.comment_uri && (
                         <div className="mt-3 pt-3 border-t">
-                          <p className="text-xs text-gray-500 mb-1">Comment URI</p>
+                          <p className="text-xs text-gray-500 mb-1">Comment</p>
                           <a
                             href={feedback.comment_uri}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-primary hover:text-primary/80 text-xs flex items-center gap-1 break-all"
                           >
-                            {feedback.comment_uri} <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                            {feedback.comment_uri} 
+                            {feedback.comment_uri.startsWith('http') && <ExternalLink className="h-3 w-3 flex-shrink-0" />}
                           </a>
                         </div>
                       )}

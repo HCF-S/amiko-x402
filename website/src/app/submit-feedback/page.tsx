@@ -211,7 +211,7 @@ function SubmitFeedbackPageContent() {
           {/* Comment URI (Optional) */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Comment URI (Optional)</CardTitle>
+              <CardTitle className="text-lg">Comment (Optional)</CardTitle>
             </CardHeader>
             <CardContent>
               <input
