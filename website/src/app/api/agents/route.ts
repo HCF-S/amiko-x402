@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const agents = await prisma.agent.findMany({
       orderBy: {
-        created_at: 'desc',
+        job_count: 'desc',
       },
       select: {
         wallet: true,
