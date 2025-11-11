@@ -8,7 +8,7 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import { Program, AnchorProvider, Wallet, BN } from '@coral-xyz/anchor';
 import { PrismaClient } from '@prisma/client';
 import idl from '../lib/idl/trustless.json';
-import { matchInstructionsGetData } from '../lib/log-parser';
+import { extractPubkeyFromLog } from './log-utils';
 import { syncAgentAccount } from './sync-agents';
 import { getFeedbackPDA } from '../lib/program';
 
@@ -171,33 +171,20 @@ async function startEventListener() {
       console.log('📋 Program log received');
       console.log(`📝 Transaction: ${logs.signature}`);
       
-      // Extract record from logs
-      const result = matchInstructionsGetData(logs.logs, ['RegisterJob', 'SubmitFeedback']);
-      
-      if (!result) {
-        return; // Skip if no instruction detected
+      // Check for Job Registered message
+      const jobPubkey = extractPubkeyFromLog(logs.logs, 'Job Registered:');
+      if (jobPubkey) {
+        console.log(`💼 Job registration detected: ${jobPubkey.toBase58()}`);
+        await syncJobRecord(program, jobPubkey, logs.signature);
+        return;
       }
 
-      const { pubkey, instruction } = result;
-
-      // Handle RegisterJob instruction
-      if (instruction === 'RegisterJob') {
-        const emoji = '💼';
-        console.log(`${emoji} Job registration detected: ${pubkey.toBase58()}`);
-        await syncJobRecord(program, pubkey, logs.signature);
-      }
-
-      // Handle SubmitFeedback instruction
-      if (instruction === 'SubmitFeedback') {
-        const emoji = '⭐';
-        console.log(`${emoji} Feedback submission detected for job: ${pubkey.toBase58()}`);
-        
-        // The pubkey from logs is the job record address
-        // Derive the feedback PDA from the job record
-        const [feedbackPDA] = getFeedbackPDA(pubkey);
-        
-        console.log(`🔍 Derived feedback PDA: ${feedbackPDA.toBase58()}`);
-        await syncFeedbackRecord(program, feedbackPDA, logs.signature);
+      // Check for Feedback Submitted message
+      const feedbackPubkey = extractPubkeyFromLog(logs.logs, 'Feedback Submitted:');
+      if (feedbackPubkey) {
+        console.log(`⭐ Feedback submission detected: ${feedbackPubkey.toBase58()}`);
+        await syncFeedbackRecord(program, feedbackPubkey, logs.signature);
+        return;
       }
     },
     'confirmed'

@@ -9,7 +9,7 @@ import { Program, AnchorProvider, Wallet, BN } from '@coral-xyz/anchor';
 import { PrismaClient } from '@prisma/client';
 import idl from '../lib/idl/trustless.json';
 import { getAgentPDA } from '../lib/program';
-import { matchInstructionsGetData } from '../lib/log-parser';
+import { matchInstructionsGetData, extractPubkeyFromLog } from './log-utils';
 
 const prisma = new PrismaClient();
 
@@ -268,22 +268,14 @@ async function startEventListener() {
       console.log('📋 Program log received');
       
       // Check for auto-created agent message
-      const autoCreatedMatch = logs.logs.find(log => 
-        log.includes('Agent Account Auto Created:')
-      );
+      const agentWallet = extractPubkeyFromLog(logs.logs, 'Agent Account Auto Created:');
       
-      if (autoCreatedMatch) {
-        // Extract agent wallet address from the log message
-        // Format: "Program log: Agent Account Auto Created: <agent_wallet_pubkey>"
-        const match = autoCreatedMatch.match(/Agent Account Auto Created: ([A-Za-z0-9]+)/);
-        if (match && match[1]) {
-          const agentWallet = new PublicKey(match[1]);
-          console.log(`🤖 Auto-created agent detected: ${agentWallet.toBase58()}`);
-          
-          // Fetch and sync with default values for auto-created agents
-          await syncAgentAccount(program, agentWallet, true);
-          return;
-        }
+      if (agentWallet) {
+        console.log(`🤖 Auto-created agent detected: ${agentWallet.toBase58()}`);
+        
+        // Fetch and sync with default values for auto-created agents
+        await syncAgentAccount(program, agentWallet, true);
+        return;
       }
       
       // Extract agent address and instruction from logs

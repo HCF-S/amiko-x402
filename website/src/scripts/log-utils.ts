@@ -1,4 +1,44 @@
+/**
+ * Solana Program Log Parsing Utilities
+ * Helper functions for extracting data from Solana transaction logs
+ */
+
 import { PublicKey } from '@solana/web3.js';
+
+/**
+ * Extract a pubkey from a log message that matches a specific pattern
+ * @param logs Array of log strings from transaction
+ * @param messagePrefix The prefix to match (e.g., "Agent Account Auto Created:", "Job Registered:")
+ * @returns PublicKey if found, null otherwise
+ */
+export function extractPubkeyFromLog(
+  logs: string[],
+  messagePrefix: string
+): PublicKey | null {
+  try {
+    // Find the log message that contains the prefix
+    const matchingLog = logs.find(log => log.includes(messagePrefix));
+    
+    if (!matchingLog) {
+      return null;
+    }
+
+    // Extract the pubkey after the prefix
+    // Format: "Program log: <messagePrefix> <pubkey>"
+    const regex = new RegExp(`${messagePrefix}\\s+([A-Za-z0-9]+)`);
+    const match = matchingLog.match(regex);
+    
+    if (match && match[1]) {
+      const pubkey = new PublicKey(match[1]);
+      console.log(`🔍 Extracted pubkey from "${messagePrefix}": ${pubkey.toBase58()}`);
+      return pubkey;
+    }
+  } catch (error) {
+    console.error(`Error extracting pubkey from log with prefix "${messagePrefix}":`, error);
+  }
+  
+  return null;
+}
 
 /**
  * Match instruction logs and extract Program data from following lines
