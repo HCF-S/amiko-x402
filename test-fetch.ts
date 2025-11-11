@@ -1,6 +1,6 @@
 import { wrapFetchWithPayment, createSigner } from './packages/x402-fetch/src/index.js';
 
-const testWalletPrivateKey = "your solana private key";
+const testWalletPrivateKey = "5XmdUGwiujfbd5uEYcoPbZGsXYx49Bqt81nt2RUgcVuuAWvRZtcWjbpEdPVu6Lde1kztDW5WFCQofamdAKX6QDZF";
 const x402Endpoint = "https://x402-server.heyamiko.com/solana-devnet/time";
 
 async function testX402Fetch() {
@@ -22,6 +22,7 @@ async function testX402Fetch() {
       {
         svmConfig: {
           rpcUrl: 'https://api.devnet.solana.com',
+          trustlessProgramId: 'GPd4z3N25UfjrkgfgSxsjoyG7gwYF8Fo7Emvp9TKsDeW', // Trustless program ID for job registration
         }
       }
     );
@@ -42,6 +43,10 @@ async function testX402Fetch() {
     const data = await response.json();
     console.log('📦 Response data:');
     console.log(JSON.stringify(data, null, 2));
+
+    console.log('📦 Response headers:');
+    console.log(response.headers);
+
     console.log('\n✨ Test completed successfully!');
 
   } catch (error) {
