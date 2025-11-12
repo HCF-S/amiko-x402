@@ -326,7 +326,7 @@ export default function MyAgentPage() {
   return (
     <div className="min-h-screen">
       <main className="container mx-auto px-4 py-8">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           <div className="mb-8">
             <h1 className="text-2xl font-bold mb-2">{isUpdateMode ? 'My Agent' : 'Register Agent'}</h1>
             <p className="text-muted-foreground">
