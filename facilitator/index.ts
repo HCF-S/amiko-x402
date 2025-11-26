@@ -34,11 +34,50 @@ if (!BASE_MAINNET_PRIVATE_KEY && !BASE_SEPOLIA_PRIVATE_KEY && !SVM_PRIVATE_KEY) 
   process.exit(1);
 }
 
+const CROSSMINT_API_KEY = process.env.CROSSMINT_API_KEY;
+const AMIKO_PLATFORM_API_URL = process.env.AMIKO_PLATFORM_API_URL || 'http://localhost:4114';
+
+/**
+ * Check if a wallet is Crossmint-managed by querying the platform API
+ */
+async function isWalletCrossmint(walletAddress: string, platformApiUrl: string): Promise<boolean> {
+  try {
+    console.log(`[wallet-check] Querying wallet: ${walletAddress}`);
+    const response = await fetch(`${platformApiUrl}/public/wallets/${encodeURIComponent(walletAddress)}`);
+
+    if (!response.ok) {
+      console.error(`[wallet-check] API query failed: ${response.status} ${response.statusText}`);
+      return false;
+    }
+
+    const data = await response.json();
+    console.log(`[wallet-check] Wallet lookup result:`, {
+      found: data.found,
+      isCrossmint: data.isCrossmint,
+      custodian: data.custodian,
+    });
+
+    return data.isCrossmint === true;
+  } catch (error: any) {
+    console.error(`[wallet-check] Error querying wallet: ${error.message}`);
+    return false;
+  }
+}
+
 // Helper to get X402 config for a specific network
 const getX402Config = (network: string): X402Config | undefined => {
+  // Base config with Crossmint settings
+  const baseConfig = {
+    svmConfig: {
+      crossmintApiKey: CROSSMINT_API_KEY,
+      platformApiUrl: AMIKO_PLATFORM_API_URL,
+    },
+  };
+
   if (network === "solana" && SVM_MAINNET_RPC_URL) {
     return {
       svmConfig: {
+        ...baseConfig.svmConfig,
         rpcUrl: SVM_MAINNET_RPC_URL,
       },
     };
@@ -46,11 +85,12 @@ const getX402Config = (network: string): X402Config | undefined => {
   if (network === "solana-devnet" && SVM_DEVNET_RPC_URL) {
     return {
       svmConfig: {
+        ...baseConfig.svmConfig,
         rpcUrl: SVM_DEVNET_RPC_URL,
       },
     };
   }
-  return undefined;
+  return baseConfig;
 };
 
 const app = express();
@@ -200,13 +240,21 @@ app.post("/prepare", async (req: Request, res: Response) => {
       throw new Error(`Prepare endpoint only supports SVM networks. Received: ${paymentRequirements.network}`);
     }
 
-    // Get the facilitator's address to use as fee payer
+    // Get the facilitator's address
     const signer = await createSigner(paymentRequirements.network, SVM_PRIVATE_KEY);
-    const feePayer = isSvmSignerWallet(signer) ? signer.address : undefined;
-    
-    if (!feePayer) {
-      throw new Error("Failed to get fee payer address from signer");
+    const facilitatorAddress = isSvmSignerWallet(signer) ? signer.address : undefined;
+
+    if (!facilitatorAddress) {
+      throw new Error("Failed to get facilitator address from signer");
     }
+
+    // Check if the wallet is Crossmint-managed
+    const isCrossmint = await isWalletCrossmint(body.walletAddress, AMIKO_PLATFORM_API_URL);
+    console.log(`Wallet ${body.walletAddress} is Crossmint: ${isCrossmint}`);
+
+    // For Crossmint wallets: client pays own fees (single signer)
+    // For non-Crossmint wallets: facilitator pays fees
+    const feePayer = isCrossmint ? body.walletAddress : facilitatorAddress;
 
     // Add fee payer to payment requirements
     const enrichedPaymentRequirements: PaymentRequirements = {
@@ -214,6 +262,7 @@ app.post("/prepare", async (req: Request, res: Response) => {
       extra: {
         ...paymentRequirements.extra,
         feePayer,
+        isCrossmintWallet: isCrossmint,
       },
     };
 
