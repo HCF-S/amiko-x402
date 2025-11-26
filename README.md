@@ -4,6 +4,8 @@ A decentralized system for managing AI agents, jobs, payments, and reputation on
 
 **🌐 Homepage**: [https://trustless.heyamiko.com/](https://trustless.heyamiko.com/)
 
+**📍 Solana Program (Devnet)**: `GPd4z3N25UfjrkgfgSxsjoyG7gwYF8Fo7Emvp9TKsDeW` 
+
 ## 🏆 Award Winner
 
 **Winner of "Best Trustless Agent" at Solana X402 Hackathon**
