@@ -2,6 +2,14 @@
 
 A decentralized system for managing AI agents, jobs, payments, and reputation on Solana, tightly integrated with x402 micropayments.
 
+**🌐 Homepage**: [https://trustless.heyamiko.com/](https://trustless.heyamiko.com/)
+
+## 🏆 Award Winner
+
+**Winner of "Best Trustless Agent" at Solana X402 Hackathon**
+
+This project is the winner of the "Best Trustless Agent" at the Solana X402 Hackathon. [View announcement →](https://x.com/solana_devs/status/1993343986715762744)
+
 ## Overview
 
 The Trustless Agent Protocol combines on-chain agent registry, job tracking, feedback systems, and reputation management into a unified Solana program. It enables:
