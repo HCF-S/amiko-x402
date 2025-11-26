@@ -110,7 +110,7 @@ export function wrapFetchWithPayment(
       headers: {
         ...(init.headers || {}),
         "X-PAYMENT": paymentHeader,
-        "Access-Control-Expose-Headers": "X-PAYMENT-RESPONSE",
+        "Access-Control-Expose-Headers": "X-PAYMENT-RESPONSE, X-JOB-ID",
       },
       __is402Retry: true,
     };
