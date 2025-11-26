@@ -369,11 +369,14 @@ async function createRegisterJobInstruction(
   trustlessProgramId: string,
   transferInstructionIndex: number,
 ): Promise<Instruction> {
-  const { asset, payTo, extra } = paymentRequirements;
+  const { asset, payTo, extra, maxAmountRequired } = paymentRequirements;
   const programId = address(trustlessProgramId);
-  
+
   // Extract fee payer from paymentRequirements.extra, default to client address
   const feePayer = (extra?.feePayer as Address) || client.address;
+
+  // Check if this is a Crossmint wallet transaction
+  const isCrossmintWallet = extra?.isCrossmintWallet === true;
 
   // Generate a unique identifier to use as the payment_tx address
   // This serves as a unique job ID and is used to derive the job_record PDA
@@ -421,8 +424,34 @@ async function createRegisterJobInstruction(
   // Instruction discriminator for register_job (Anchor uses first 8 bytes of sha256("global:register_job"))
   const discriminator = Buffer.from([0x57, 0xd5, 0xb1, 0xff, 0x83, 0x11, 0xb2, 0x2d]);
 
-  // Instruction data: discriminator + transfer_instruction_index (u8)
-  const data = Buffer.concat([discriminator, Buffer.from([transferInstructionIndex])]);
+  // Build instruction data:
+  // - discriminator (8 bytes)
+  // - transfer_instruction_index (u8)
+  // - crossmint_payment_amount (Option<u64>): [0] for None, [1, amount_bytes] for Some
+  let data: Buffer;
+
+  if (isCrossmintWallet) {
+    // For Crossmint wallets, pass the payment amount since we can't parse it from the wrapper
+    const paymentAmount = BigInt(maxAmountRequired);
+    const amountBytes = Buffer.alloc(8);
+    amountBytes.writeBigUInt64LE(paymentAmount);
+
+    // Option<u64> Some variant: [1, value (8 bytes)]
+    data = Buffer.concat([
+      discriminator,
+      Buffer.from([transferInstructionIndex]),
+      Buffer.from([1]), // Some variant tag
+      amountBytes,
+    ]);
+  } else {
+    // For direct token transfers, pass None - amount will be extracted from instruction
+    // Option<u64> None variant: [0]
+    data = Buffer.concat([
+      discriminator,
+      Buffer.from([transferInstructionIndex]),
+      Buffer.from([0]), // None variant tag
+    ]);
+  }
 
   return {
     programAddress: programId,

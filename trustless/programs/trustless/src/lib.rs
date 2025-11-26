@@ -4,6 +4,10 @@ use anchor_spl::token_interface::{TokenAccount, TokenInterface};
 
 declare_id!("GPd4z3N25UfjrkgfgSxsjoyG7gwYF8Fo7Emvp9TKsDeW");
 
+/// Crossmint Smart Wallet Program ID
+/// This program wraps transactions executed via Crossmint's custodial wallet API
+const CROSSMINT_SMART_WALLET: &str = "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG";
+
 #[program]
 pub mod trustless {
     use super::*;
@@ -63,26 +67,33 @@ pub mod trustless {
     /// Register a job (called by x402 client)
     /// Supports lazy agent creation
     /// Verifies USDC payment from client to agent by checking transaction instructions
+    ///
+    /// For direct token program transactions: verifies transfer instruction details
+    /// For Crossmint-wrapped transactions: trusts the wrapper and uses provided payment amount
     pub fn register_job(
         ctx: Context<RegisterJob>,
         transfer_instruction_index: u8,
+        // Optional payment amount for Crossmint-wrapped transactions
+        // When the transfer instruction is wrapped by Crossmint's smart wallet,
+        // we can't parse the inner transfer instruction, so we trust this value
+        crossmint_payment_amount: Option<u64>,
     ) -> Result<()> {
         // Get the job_record key before mutable borrow
         let job_record_key = ctx.accounts.job_record.key();
-        
+
         let job_record = &mut ctx.accounts.job_record;
         let clock = Clock::get()?;
 
         // Verify payment: check that client token account transferred to agent token account
         let client_token = &ctx.accounts.client_token_account;
         let agent_token = &ctx.accounts.agent_token_account;
-        
+
         // Verify both accounts use the same USDC mint
         require!(
             client_token.mint == agent_token.mint,
             ErrorCode::TokenMintMismatch
         );
-        
+
         // Verify token accounts belong to correct owners
         require!(
             client_token.owner == ctx.accounts.client_wallet.key(),
@@ -92,77 +103,102 @@ pub mod trustless {
             agent_token.owner == ctx.accounts.agent_wallet.key(),
             ErrorCode::InvalidAgentTokenAccount
         );
-        
+
         // Load and verify the transfer instruction from the current transaction
         let ixs = ctx.accounts.instruction_sysvar.to_account_info();
         let transfer_ix = load_instruction_at_checked(
             transfer_instruction_index as usize,
             &ixs,
         )?;
-        
-        // Verify it's a token program instruction (matches the token_program account)
+
+        // Parse the Crossmint smart wallet program ID
+        let crossmint_wallet_pubkey = CROSSMINT_SMART_WALLET.parse::<Pubkey>()
+            .map_err(|_| ErrorCode::InvalidTransferProgramId)?;
+
+        // Determine if this is a direct token transfer or a Crossmint-wrapped transaction
+        let is_crossmint_wrapped = transfer_ix.program_id == crossmint_wallet_pubkey;
+        let is_direct_token_transfer = transfer_ix.program_id == ctx.accounts.token_program.key();
+
+        // Validate: must be either a token program instruction or Crossmint wrapper
         require!(
-            transfer_ix.program_id == ctx.accounts.token_program.key(),
+            is_direct_token_transfer || is_crossmint_wrapped,
             ErrorCode::InvalidTransferProgramId
         );
-        
-        // Parse SPL Token Transfer instruction
-        // Discriminator 3 = Transfer, Discriminator 12 = TransferChecked
-        // Both have the same format: [discriminator: u8, amount: u64, ...]
-        require!(
-            transfer_ix.data.len() >= 9 && (transfer_ix.data[0] == 3 || transfer_ix.data[0] == 12),
-            ErrorCode::InvalidTransferDiscriminator
-        );
-        
-        // Extract transfer amount from instruction data
-        let amount_bytes: [u8; 8] = transfer_ix.data[1..9]
-            .try_into()
-            .map_err(|_| ErrorCode::InvalidTransferAmount)?;
-        let payment_amount_u64 = u64::from_le_bytes(amount_bytes);
-        
-        // Convert to u32 and validate range (max ~4,294 USDC)
-        let payment_amount = u32::try_from(payment_amount_u64)
-            .map_err(|_| ErrorCode::PaymentAmountTooLarge)?;
-        
-        // Verify the transfer instruction accounts match our expected accounts
-        // Transfer (discriminator 3): [source, destination, authority]
-        // TransferChecked (discriminator 12): [source, mint, destination, authority]
-        let is_transfer_checked = transfer_ix.data[0] == 12;
-        
-        if is_transfer_checked {
-            require!(
-                transfer_ix.accounts.len() >= 4,
-                ErrorCode::InvalidTransferAccounts
-            );
-            require!(
-                transfer_ix.accounts[0].pubkey == client_token.key(),
-                ErrorCode::TransferSourceMismatch
-            );
-            require!(
-                transfer_ix.accounts[2].pubkey == agent_token.key(),
-                ErrorCode::TransferDestinationMismatch
-            );
-            require!(
-                transfer_ix.accounts[3].pubkey == ctx.accounts.client_wallet.key(),
-                ErrorCode::TransferAuthorityMismatch
-            );
+
+        let payment_amount: u32;
+
+        if is_crossmint_wrapped {
+            // Crossmint-wrapped transaction:
+            // The actual token transfer happens as a CPI inside Crossmint's ExecuteTransactionSync
+            // We trust the wrapper and use the provided payment amount
+            msg!("Crossmint-wrapped transaction detected, using provided payment amount");
+
+            let crossmint_amount = crossmint_payment_amount
+                .ok_or(ErrorCode::CrossmintPaymentAmountRequired)?;
+
+            payment_amount = u32::try_from(crossmint_amount)
+                .map_err(|_| ErrorCode::PaymentAmountTooLarge)?;
         } else {
+            // Direct token program instruction: verify transfer details
+
+            // Parse SPL Token Transfer instruction
+            // Discriminator 3 = Transfer, Discriminator 12 = TransferChecked
+            // Both have the same format: [discriminator: u8, amount: u64, ...]
             require!(
-                transfer_ix.accounts.len() >= 3,
-                ErrorCode::InvalidTransferAccounts
+                transfer_ix.data.len() >= 9 && (transfer_ix.data[0] == 3 || transfer_ix.data[0] == 12),
+                ErrorCode::InvalidTransferDiscriminator
             );
-            require!(
-                transfer_ix.accounts[0].pubkey == client_token.key(),
-                ErrorCode::TransferSourceMismatch
-            );
-            require!(
-                transfer_ix.accounts[1].pubkey == agent_token.key(),
-                ErrorCode::TransferDestinationMismatch
-            );
-            require!(
-                transfer_ix.accounts[2].pubkey == ctx.accounts.client_wallet.key(),
-                ErrorCode::TransferAuthorityMismatch
-            );
+
+            // Extract transfer amount from instruction data
+            let amount_bytes: [u8; 8] = transfer_ix.data[1..9]
+                .try_into()
+                .map_err(|_| ErrorCode::InvalidTransferAmount)?;
+            let payment_amount_u64 = u64::from_le_bytes(amount_bytes);
+
+            // Convert to u32 and validate range (max ~4,294 USDC)
+            payment_amount = u32::try_from(payment_amount_u64)
+                .map_err(|_| ErrorCode::PaymentAmountTooLarge)?;
+
+            // Verify the transfer instruction accounts match our expected accounts
+            // Transfer (discriminator 3): [source, destination, authority]
+            // TransferChecked (discriminator 12): [source, mint, destination, authority]
+            let is_transfer_checked = transfer_ix.data[0] == 12;
+
+            if is_transfer_checked {
+                require!(
+                    transfer_ix.accounts.len() >= 4,
+                    ErrorCode::InvalidTransferAccounts
+                );
+                require!(
+                    transfer_ix.accounts[0].pubkey == client_token.key(),
+                    ErrorCode::TransferSourceMismatch
+                );
+                require!(
+                    transfer_ix.accounts[2].pubkey == agent_token.key(),
+                    ErrorCode::TransferDestinationMismatch
+                );
+                require!(
+                    transfer_ix.accounts[3].pubkey == ctx.accounts.client_wallet.key(),
+                    ErrorCode::TransferAuthorityMismatch
+                );
+            } else {
+                require!(
+                    transfer_ix.accounts.len() >= 3,
+                    ErrorCode::InvalidTransferAccounts
+                );
+                require!(
+                    transfer_ix.accounts[0].pubkey == client_token.key(),
+                    ErrorCode::TransferSourceMismatch
+                );
+                require!(
+                    transfer_ix.accounts[1].pubkey == agent_token.key(),
+                    ErrorCode::TransferDestinationMismatch
+                );
+                require!(
+                    transfer_ix.accounts[2].pubkey == ctx.accounts.client_wallet.key(),
+                    ErrorCode::TransferAuthorityMismatch
+                );
+            }
         }
 
         // Lazy agent creation if account doesn't exist yet
@@ -566,4 +602,7 @@ pub enum ErrorCode {
     
     #[msg("Payment amount too large (max ~4,294 USDC)")]
     PaymentAmountTooLarge,
+
+    #[msg("Crossmint-wrapped transactions require payment amount parameter")]
+    CrossmintPaymentAmountRequired,
 }

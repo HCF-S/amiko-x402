@@ -97,3 +97,157 @@ For Crossmint self-paying flow:
 - `payer` = Crossmint wallet
 - `client` = Crossmint wallet
 - Same address, one signature needed
+
+## Crossmint API Integration
+
+### API Endpoint
+
+```
+POST https://staging.crossmint.com/api/2025-06-09/wallets/{walletAddress}/transactions
+```
+
+### Headers
+
+```json
+{
+  "Content-Type": "application/json",
+  "X-API-KEY": "{CROSSMINT_API_KEY}"
+}
+```
+
+### Request Body
+
+```json
+{
+  "params": {
+    "transaction": "{base58_encoded_versioned_transaction}"
+  }
+}
+```
+
+### Transaction Encoding
+
+The transaction is sent as a **VersionedTransaction** (v0) serialized to base58:
+
+```
+Byte layout:
+[0]        = numRequiredSignatures (1 for single-signer)
+[1-64]     = empty signature placeholder (64 zero bytes)
+[65...]    = transaction message bytes
+
+Message bytes structure (v0):
+[0]        = 0x80 (version prefix for v0)
+[1]        = numRequiredSignatures
+[2]        = numReadonlySignedAccounts
+[3]        = numReadonlyUnsignedAccounts
+[4...]     = static account keys
+...        = recent blockhash
+...        = instructions
+...        = address table lookups (if any)
+```
+
+### Polling for Completion
+
+After creating the transaction, poll for status:
+
+```
+GET https://staging.crossmint.com/api/2025-06-09/wallets/{walletAddress}/transactions/{transactionId}
+```
+
+Crossmint signs AND submits the transaction. On success, the response includes:
+```json
+{
+  "status": "success",
+  "onChain": {
+    "txId": "{solana_signature}"
+  }
+}
+```
+
+## Crossmint + Trustless Incompatibility
+
+### The Problem
+
+**Crossmint wallets are NOT compatible with the trustless flow.**
+
+When Crossmint signs and submits a transaction, it wraps the entire transaction inside their smart wallet program (`SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG`).
+
+### How Crossmint Transforms Transactions
+
+**What we send:**
+```
+Instructions:
+  [0] SetComputeUnitPrice
+  [1] SetComputeUnitLimit
+  [2] SPL Token Transfer
+  [3] register_job
+```
+
+**What actually executes on-chain:**
+```
+Instructions:
+  [0] ExecuteTransactionSync (Crossmint smart wallet)
+      └── CPI [0] SetComputeUnitPrice
+      └── CPI [1] SetComputeUnitLimit
+      └── CPI [2] SPL Token Transfer
+      └── CPI [3] register_job
+```
+
+### Why This Breaks register_job
+
+The `register_job` instruction uses the **instruction sysvar** to verify the token transfer:
+
+```rust
+// In trustless program (lib.rs:104)
+// Expects: instructions[transfer_instruction_index].program_id == TokenProgram
+// But sees: instructions[0].program_id == SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG
+```
+
+The trustless program looks at the top-level instructions, but all it sees is Crossmint's wrapper. It cannot verify the inner CPI'd token transfer.
+
+### Error Message
+
+```
+Error Code: InvalidTransferProgramId
+Error Number: 6006
+Error Message: Transfer instruction program ID does not match token program.
+```
+
+### Simulation Logs
+
+```
+Program SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG invoke [1]
+Program log: Instruction: ExecuteTransactionSync
+Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]
+Program log: Instruction: TransferChecked
+Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success
+Program GPd4z3N25UfjrkgfgSxsjoyG7gwYF8Fo7Emvp9TKsDeW invoke [2]
+Program log: Instruction: RegisterJob
+Program log: AnchorError... InvalidTransferProgramId
+Program GPd4z3N25UfjrkgfgSxsjoyG7gwYF8Fo7Emvp9TKsDeW failed
+```
+
+### Current Status
+
+| Flow | Crossmint Support | Notes |
+|------|-------------------|-------|
+| Non-trustless | WORKS | Simple token transfer, no sysvar inspection |
+| Trustless | FAILS | Sysvar inspection sees Crossmint wrapper, not token program |
+
+### Potential Solutions
+
+1. **Modify trustless program** to handle CPI-wrapped instructions (complex, requires understanding Crossmint's smart wallet structure)
+2. **Use a different verification method** that doesn't rely on instruction sysvar
+3. **Disable trustless for Crossmint wallets** (current workaround)
+
+## Test Results
+
+### Non-Trustless Crossmint Payment
+- Status: **PASS**
+- Transaction size: 360 bytes
+- Single signer (Crossmint wallet)
+
+### Trustless Crossmint Payment
+- Status: **FAIL**
+- Transaction size: 688 bytes
+- Fails at simulation due to smart wallet wrapping
