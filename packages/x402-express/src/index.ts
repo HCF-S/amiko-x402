@@ -25,6 +25,12 @@ import {
 } from "x402/types";
 import { useFacilitator } from "x402/verify";
 
+// Trustless program IDs for different networks
+const TRUSTLESS_PROGRAM_IDS = {
+  "solana": "GPd4z3N25UfjrkgfgSxsjoyG7gwYF8Fo7Emvp9TKsDeW", // Mainnet
+  "solana-devnet": "GPd4z3N25UfjrkgfgSxsjoyG7gwYF8Fo7Emvp9TKsDeW", // Devnet (same for now)
+} as const;
+
 /**
  * Creates a payment middleware factory for Express
  *
@@ -212,6 +218,11 @@ export function paymentMiddleware(
           displayAmount = Number(price.amount) / 10 ** price.asset.decimals;
         }
 
+        // Get trustless program ID based on network (for Solana networks)
+        const trustlessProgramId = SupportedSVMNetworks.includes(network)
+          ? TRUSTLESS_PROGRAM_IDS[network as keyof typeof TRUSTLESS_PROGRAM_IDS]
+          : undefined;
+
         const html =
           customPaywallHtml ||
           getPaywallHtml({
@@ -225,6 +236,8 @@ export function paymentMiddleware(
             appName: paywall?.appName,
             appLogo: paywall?.appLogo,
             sessionTokenEndpoint: paywall?.sessionTokenEndpoint,
+            svmRpcUrl: paywall?.svmRpcUrl,
+            trustlessProgramId: paywall?.enableTrustless ? trustlessProgramId : undefined,
           });
         res.status(402).send(html);
         return;
@@ -316,6 +329,11 @@ export function paymentMiddleware(
       const settleResponse = await settle(decodedPayment, selectedPaymentRequirements);
       const responseHeader = settleResponseHeader(settleResponse);
       res.setHeader("X-PAYMENT-RESPONSE", responseHeader);
+
+      // Set X-JOB-ID header if job ID is present (trustless mode)
+      if (settleResponse.jobId) {
+        res.setHeader("X-JOB-ID", settleResponse.jobId);
+      }
 
       // if the settle fails, return an error
       if (!settleResponse.success) {

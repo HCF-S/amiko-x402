@@ -28,6 +28,12 @@ import { safeBase64Encode } from "x402/shared";
 
 import { POST } from "./api/session-token";
 
+// Trustless program IDs for different networks
+const TRUSTLESS_PROGRAM_IDS = {
+  "solana": "GPd4z3N25UfjrkgfgSxsjoyG7gwYF8Fo7Emvp9TKsDeW", // Mainnet
+  "solana-devnet": "GPd4z3N25UfjrkgfgSxsjoyG7gwYF8Fo7Emvp9TKsDeW", // Devnet (same for now)
+} as const;
+
 /**
  * Creates a payment middleware factory for Next.js
  *
@@ -231,6 +237,11 @@ export function paymentMiddleware(
           }
 
           // TODO: handle paywall html for solana
+          // Get trustless program ID based on network (for Solana networks)
+          const trustlessProgramId = SupportedSVMNetworks.includes(network)
+            ? TRUSTLESS_PROGRAM_IDS[network as keyof typeof TRUSTLESS_PROGRAM_IDS]
+            : undefined;
+
           const html =
             customPaywallHtml ??
             getPaywallHtml({
@@ -244,6 +255,8 @@ export function paymentMiddleware(
               appLogo: paywall?.appLogo,
               appName: paywall?.appName,
               sessionTokenEndpoint: paywall?.sessionTokenEndpoint,
+              svmRpcUrl: paywall?.svmRpcUrl,
+              trustlessProgramId: paywall?.enableTrustless ? trustlessProgramId : undefined,
             });
           return new NextResponse(html, {
             status: 402,
@@ -333,6 +346,11 @@ export function paymentMiddleware(
             }),
           ),
         );
+
+        // Set X-JOB-ID header if job ID is present (trustless mode)
+        if (settlement.jobId) {
+          response.headers.set("X-JOB-ID", settlement.jobId);
+        }
       }
     } catch (error) {
       return new NextResponse(
