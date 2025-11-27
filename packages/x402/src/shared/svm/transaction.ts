@@ -107,6 +107,40 @@ export async function signAndSimulateTransaction(
 }
 
 /**
+ * Simulate a transaction without signing it.
+ * Used for Crossmint single-signer flows where the facilitator is not a signer.
+ *
+ * @param transaction - The transaction to simulate
+ * @param rpc - The RPC client to use to simulate the transaction
+ * @returns The transaction simulation result
+ */
+export async function simulateTransactionWithoutSigning(
+  transaction: Transaction,
+  rpc: RpcDevnet<SolanaRpcApiDevnet> | RpcMainnet<SolanaRpcApiMainnet>,
+) {
+  // serialize the transaction into a base64 encoded wire transaction
+  const base64EncodedTransaction = getBase64EncodedWireTransaction(transaction);
+
+  // simulate the transaction without signature verification
+  // and replace the blockhash since it might be expired
+  const simulateTxConfig = {
+    sigVerify: false,
+    replaceRecentBlockhash: true,
+    commitment: "confirmed",
+    encoding: "base64",
+    accounts: undefined,
+    innerInstructions: undefined,
+    minContextSlot: undefined,
+  } as const;
+
+  const simulateResult = await rpc
+    .simulateTransaction(base64EncodedTransaction, simulateTxConfig)
+    .send();
+
+  return simulateResult;
+}
+
+/**
  * Signs a transaction using the provided {@link TransactionSigner}.
  *
  * Prefers modifying signers (wallets that can rewrite the transaction) and falls

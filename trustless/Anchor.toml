@@ -1,12 +1,14 @@
 [toolchain]
 package_manager = "yarn"
+anchor_version = "0.30.1"
+solana_version = "2.1.21"
 
 [features]
 resolution = true
 skip-lint = false
 
 [programs.devnet]
-trustless = "GPd4z3N25UfjrkgfgSxsjoyG7gwYF8Fo7Emvp9TKsDeW"
+trustless = "5Rp6HM2R1eT6cp3aMHesEDcaXMtCJY3fmRBB1RmoSic3"
 
 [registry]
 url = "https://api.apr.dev"

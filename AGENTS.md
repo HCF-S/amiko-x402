@@ -164,15 +164,11 @@ Crossmint signs AND submits the transaction. On success, the response includes:
 }
 ```
 
-## Crossmint + Trustless Incompatibility
+## Crossmint + Trustless Support
 
-### The Problem
-
-**Crossmint wallets are NOT compatible with the trustless flow.**
+### How Crossmint Wraps Transactions
 
 When Crossmint signs and submits a transaction, it wraps the entire transaction inside their smart wallet program (`SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG`).
-
-### How Crossmint Transforms Transactions
 
 **What we send:**
 ```
@@ -186,68 +182,199 @@ Instructions:
 **What actually executes on-chain:**
 ```
 Instructions:
-  [0] ExecuteTransactionSync (Crossmint smart wallet)
-      └── CPI [0] SetComputeUnitPrice
-      └── CPI [1] SetComputeUnitLimit
-      └── CPI [2] SPL Token Transfer
-      └── CPI [3] register_job
+  [0] AdvanceNonceAccount (System Program)
+  [1] SetComputeUnitLimit (Compute Budget)
+  [2] ExecuteTransactionSync (Crossmint smart wallet)
+      └── CPI [0] SPL Token Transfer
+      └── CPI [1] register_job
 ```
 
-### Why This Breaks register_job
+### How the Trustless Program Handles Crossmint Transactions
 
-The `register_job` instruction uses the **instruction sysvar** to verify the token transfer:
+The trustless program detects Crossmint-wrapped transactions by searching the first 5 top-level instructions for the Crossmint smart wallet program ID:
 
 ```rust
-// In trustless program (lib.rs:104)
-// Expects: instructions[transfer_instruction_index].program_id == TokenProgram
-// But sees: instructions[0].program_id == SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG
+// In trustless program (lib.rs)
+let crossmint_wallet_pubkey = "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG";
+
+let mut is_crossmint_wrapped = false;
+for idx in 0..5 {
+    if let Ok(ix) = load_instruction_at_checked(idx, &ixs) {
+        if ix.program_id == crossmint_wallet_pubkey {
+            is_crossmint_wrapped = true;
+            break;
+        }
+    }
+}
 ```
 
-The trustless program looks at the top-level instructions, but all it sees is Crossmint's wrapper. It cannot verify the inner CPI'd token transfer.
+When a Crossmint-wrapped transaction is detected:
 
-### Error Message
+1. **Skips transfer instruction verification** - Cannot parse inner CPIs from the instruction sysvar
+2. **Uses provided payment amount** - The `crossmint_payment_amount` parameter is trusted
+3. **Uses PDA signing for agent creation** - `CpiContext::new_with_signer` for lazy agent account creation
+4. **Fee payer funds all accounts** - Agent account creation uses `fee_payer` instead of `client_wallet`
 
+### Verification Flow Changes
+
+The verification flow (`packages/x402/src/schemes/exact/svm/facilitator/verify.ts`) also handles Crossmint wallets differently:
+
+1. **Skips simulation** - For Crossmint wallets, simulation without signatures may fail due to missing accounts
+2. **Skips facilitator signing** - Single-signer flow means only Crossmint wallet signs
+3. **Uses `simulateTransactionWithoutSigning` or skips entirely** - Crossmint handles actual execution
+
+### Current Status
+
+| Flow | Crossmint Support | Notes |
+|------|-------------------|-------|
+| Non-trustless | **WORKS** | Simple token transfer |
+| Trustless | **WORKS** | Crossmint wrapper detection + trusted payment amount |
+
+## Test Results
+
+### Non-Trustless Crossmint Payment
+- Status: **PASS**
+- Transaction size: 444 bytes
+- Single signer (Crossmint wallet)
+
+### Trustless Crossmint Payment
+- Status: **PASS**
+- Transaction size: 788 bytes
+- Single signer (Crossmint wallet)
+- Note: Job ID extraction from wrapped transactions may not work (warning shown)
+
+## Known Failure Modes & Testing
+
+### Failure Mode 1: DeclaredProgramIdMismatch (Anchor Error 4100)
+
+**Symptoms:**
+```
+Error Code: DeclaredProgramIdMismatch
+Error Number: 4100
+```
+
+**Root Cause:** The deployed program binary has a different `declare_id!` than the address it was deployed to. This happens when:
+- The program is rebuilt without using the same keypair
+- The keypair in `Anchor.toml` doesn't match the deployed address
+- The `declare_id!` macro in `lib.rs` doesn't match the keypair
+
+**Prevention:**
+- Always verify `declare_id!` matches `Anchor.toml` program ID
+- Use `solana program show <PROGRAM_ID>` to verify deployed program authority
+- Run E2E tests against devnet before merging
+
+**Test Coverage:**
+- Unit tests: ❌ Cannot catch (mocked)
+- E2E tests: ✅ Would catch immediately on first CPI call
+
+---
+
+### Failure Mode 2: InvalidTransferProgramId (Error 6006)
+
+**Symptoms:**
 ```
 Error Code: InvalidTransferProgramId
 Error Number: 6006
 Error Message: Transfer instruction program ID does not match token program.
 ```
 
-### Simulation Logs
+**Root Cause:** The trustless program searches for the Crossmint wrapper at a specific instruction index, but Crossmint prepends system instructions, shifting the wrapper to a different index.
 
+**What we expect:**
 ```
-Program SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG invoke [1]
-Program log: Instruction: ExecuteTransactionSync
-Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]
-Program log: Instruction: TransferChecked
-Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success
-Program GPd4z3N25UfjrkgfgSxsjoyG7gwYF8Fo7Emvp9TKsDeW invoke [2]
-Program log: Instruction: RegisterJob
-Program log: AnchorError... InvalidTransferProgramId
-Program GPd4z3N25UfjrkgfgSxsjoyG7gwYF8Fo7Emvp9TKsDeW failed
+[0] ExecuteTransactionSync (Crossmint)  <- Check index 0
 ```
 
-### Current Status
+**What actually happens:**
+```
+[0] AdvanceNonceAccount (System Program)
+[1] SetComputeUnitLimit (Compute Budget)
+[2] ExecuteTransactionSync (Crossmint)  <- Wrapper is at index 2!
+```
 
-| Flow | Crossmint Support | Notes |
-|------|-------------------|-------|
-| Non-trustless | WORKS | Simple token transfer, no sysvar inspection |
-| Trustless | FAILS | Sysvar inspection sees Crossmint wrapper, not token program |
+**Prevention:**
+- Search multiple instruction indices (currently first 5) for Crossmint wrapper
+- Don't assume fixed instruction ordering from third-party systems
 
-### Potential Solutions
+**Test Coverage:**
+- Unit tests: ❌ Cannot catch (mocked, doesn't simulate Crossmint wrapping)
+- E2E tests: ✅ Would catch when submitting through real Crossmint API
 
-1. **Modify trustless program** to handle CPI-wrapped instructions (complex, requires understanding Crossmint's smart wallet structure)
-2. **Use a different verification method** that doesn't rely on instruction sysvar
-3. **Disable trustless for Crossmint wallets** (current workaround)
+---
 
-## Test Results
+### Failure Mode 3: Cross-program Invocation Unauthorized Signer
 
-### Non-Trustless Crossmint Payment
-- Status: **PASS**
-- Transaction size: 360 bytes
-- Single signer (Crossmint wallet)
+**Symptoms:**
+```
+Error: Cross-program invocation with unauthorized signer or writable account
+```
 
-### Trustless Crossmint Payment
-- Status: **FAIL**
-- Transaction size: 688 bytes
-- Fails at simulation due to smart wallet wrapping
+**Root Cause:** When creating accounts via CPI (like lazy agent account creation), the program must:
+1. Use `CpiContext::new_with_signer` with proper PDA seeds
+2. Fund from an account that has signer privileges in the current CPI context
+
+In Crossmint-wrapped transactions:
+- `client_wallet` does NOT have signer privileges forwarded through CPI
+- `fee_payer` DOES have signer privileges
+- PDA accounts must be signed using `&[seeds]`
+
+**Prevention:**
+```rust
+// WRONG: Using client_wallet and no PDA seeds
+CpiContext::new(
+    system_program,
+    CreateAccount { from: client_wallet, to: agent_account }
+)
+
+// CORRECT: Using fee_payer with PDA seeds
+let seeds = &[b"agent", agent_wallet.key().as_ref(), &[bump]];
+CpiContext::new_with_signer(
+    system_program,
+    CreateAccount { from: fee_payer, to: agent_account },
+    &[seeds]
+)
+```
+
+**Test Coverage:**
+- Unit tests: ❌ Cannot catch (mocked, no real CPI)
+- E2E tests: ✅ Would catch on first account creation attempt
+
+---
+
+### Current Test Matrix
+
+| Test Type | Location | What It Catches |
+|-----------|----------|-----------------|
+| Unit tests (mocked) | `packages/x402/src/**/*.test.ts` | Logic errors, type errors |
+| Test harness (manual) | `test-harness/src/` | Real Crossmint behavior, on-chain errors |
+| Trustless tests (manual) | `trustless/tests/` | Contract logic, PDA derivation |
+
+### Testing Gaps
+
+1. **No CI/CD integration tests** - E2E tests exist but aren't automated
+2. **No local validator tests** - Could use `solana-test-validator` with mocked programs
+3. **No Crossmint wrapper simulation** - Unit tests can't simulate Crossmint's transaction wrapping
+
+### Recommended Test Strategy
+
+Before deploying trustless program changes:
+
+1. **Build and verify program ID:**
+   ```bash
+   cd trustless && anchor build
+   # Verify declare_id! matches Anchor.toml
+   ```
+
+2. **Deploy to devnet:**
+   ```bash
+   solana program deploy target/deploy/trustless.so --program-id <KEYPAIR>
+   ```
+
+3. **Run E2E tests:**
+   ```bash
+   cd test-harness && npx tsx src/crossmint-tx-test.ts
+   ```
+
+4. **Verify both flows:**
+   - Non-trustless Crossmint payment
+   - Trustless Crossmint payment (with agent creation)

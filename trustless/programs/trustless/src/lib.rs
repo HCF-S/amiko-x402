@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked;
 use anchor_spl::token_interface::{TokenAccount, TokenInterface};
 
-declare_id!("GPd4z3N25UfjrkgfgSxsjoyG7gwYF8Fo7Emvp9TKsDeW");
+declare_id!("5Rp6HM2R1eT6cp3aMHesEDcaXMtCJY3fmRBB1RmoSic3");
 
 /// Crossmint Smart Wallet Program ID
 /// This program wraps transactions executed via Crossmint's custodial wallet API
@@ -104,20 +104,41 @@ pub mod trustless {
             ErrorCode::InvalidAgentTokenAccount
         );
 
-        // Load and verify the transfer instruction from the current transaction
+        // Load instruction sysvar for verification
         let ixs = ctx.accounts.instruction_sysvar.to_account_info();
-        let transfer_ix = load_instruction_at_checked(
-            transfer_instruction_index as usize,
-            &ixs,
-        )?;
 
         // Parse the Crossmint smart wallet program ID
         let crossmint_wallet_pubkey = CROSSMINT_SMART_WALLET.parse::<Pubkey>()
             .map_err(|_| ErrorCode::InvalidTransferProgramId)?;
 
-        // Determine if this is a direct token transfer or a Crossmint-wrapped transaction
-        let is_crossmint_wrapped = transfer_ix.program_id == crossmint_wallet_pubkey;
-        let is_direct_token_transfer = transfer_ix.program_id == ctx.accounts.token_program.key();
+        // Check if any of the first few instructions are from the Crossmint wrapper
+        // When Crossmint wraps our transaction, the ExecuteTransactionSync instruction
+        // might not be at index 0 - Crossmint may prepend system/compute budget instructions.
+        // All our original instructions (transfer, register_job) become inner CPIs that are NOT
+        // visible in the instruction sysvar.
+        let mut is_crossmint_wrapped = false;
+        for idx in 0..5 {
+            if let Ok(ix) = load_instruction_at_checked(idx, &ixs) {
+                if ix.program_id == crossmint_wallet_pubkey {
+                    is_crossmint_wrapped = true;
+                    break;
+                }
+            } else {
+                break; // No more instructions
+            }
+        }
+
+        // If not Crossmint-wrapped, load the transfer instruction at the specified index
+        let (transfer_ix, is_direct_token_transfer) = if !is_crossmint_wrapped {
+            let ix = load_instruction_at_checked(
+                transfer_instruction_index as usize,
+                &ixs,
+            )?;
+            let is_token = ix.program_id == ctx.accounts.token_program.key();
+            (Some(ix), is_token)
+        } else {
+            (None, false)
+        };
 
         // Validate: must be either a token program instruction or Crossmint wrapper
         require!(
@@ -140,6 +161,8 @@ pub mod trustless {
                 .map_err(|_| ErrorCode::PaymentAmountTooLarge)?;
         } else {
             // Direct token program instruction: verify transfer details
+            // We know transfer_ix is Some here because we're in the !is_crossmint_wrapped branch
+            let transfer_ix = transfer_ix.expect("transfer_ix should be Some for direct transfers");
 
             // Parse SPL Token Transfer instruction
             // Discriminator 3 = Transfer, Discriminator 12 = TransferChecked
@@ -203,20 +226,26 @@ pub mod trustless {
 
         // Lazy agent creation if account doesn't exist yet
         let agent_account_info = ctx.accounts.agent_account.to_account_info();
-        
+
         if agent_account_info.data_is_empty() {
             // Create the account
             let space = 320;
             let rent = Rent::get()?;
             let lamports = rent.minimum_balance(space);
-            
+
+            // Get the bump for the agent PDA
+            let agent_bump = ctx.bumps.agent_account;
+            let agent_wallet_key = ctx.accounts.agent_wallet.key();
+            let agent_seeds: &[&[u8]] = &[b"agent", agent_wallet_key.as_ref(), &[agent_bump]];
+
             anchor_lang::system_program::create_account(
-                CpiContext::new(
+                CpiContext::new_with_signer(
                     ctx.accounts.system_program.to_account_info(),
                     anchor_lang::system_program::CreateAccount {
-                        from: ctx.accounts.client_wallet.to_account_info(),
+                        from: ctx.accounts.fee_payer.to_account_info(),
                         to: agent_account_info.clone(),
                     },
+                    &[agent_seeds],
                 ),
                 lamports,
                 space as u64,

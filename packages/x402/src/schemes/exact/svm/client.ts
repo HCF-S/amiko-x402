@@ -121,13 +121,42 @@ export async function createUnsignedTransaction(
 
   // Compile the transaction message
   const compiledTransactionMessage = compileTransactionMessage(transactionMessage);
-  
-  // Serialize the compiled transaction message to base64
+
+  // Serialize the compiled transaction message
   const encoder = getCompiledTransactionMessageEncoder();
-  const encodedMessage = encoder.encode(compiledTransactionMessage);
-  
+  const messageBytes = encoder.encode(compiledTransactionMessage);
+
+  // Get required signers from the transaction message
+  // For Crossmint wallets, only the client/fee payer signs
+  const requiredSigners: Address[] = [];
+  const feePayer = paymentRequirements.extra?.feePayer as Address | undefined;
+  if (feePayer) {
+    requiredSigners.push(feePayer);
+  }
+  // If fee payer is the wallet itself (Crossmint single-signer), that's the only signer
+  // Otherwise add the wallet as a signer too
+  if (feePayer !== walletAddress as Address) {
+    requiredSigners.push(walletAddress as Address);
+  }
+
+  // Create empty signature slots for each required signer
+  // Wire format: [signature_count (compact-u16)][signature_1 (64 bytes)]...[message_bytes]
+  const signatureCount = requiredSigners.length;
+
+  // Compact-u16 encoding for small numbers (< 128) is just 1 byte
+  const signatureCountByte = signatureCount;
+
+  // Each signature is 64 bytes (all zeros for unsigned)
+  const emptySignatures = new Uint8Array(signatureCount * 64);
+
+  // Combine into wire transaction format
+  const wireTransaction = new Uint8Array(1 + emptySignatures.length + messageBytes.length);
+  wireTransaction[0] = signatureCountByte;
+  wireTransaction.set(emptySignatures, 1);
+  wireTransaction.set(messageBytes, 1 + emptySignatures.length);
+
   // Convert to base64
-  return btoa(String.fromCharCode(...encodedMessage));
+  return btoa(String.fromCharCode(...wireTransaction));
 }
 
 /**

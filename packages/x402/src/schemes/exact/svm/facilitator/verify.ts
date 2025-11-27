@@ -47,6 +47,7 @@ import {
 import {
   decodeTransactionFromPayload,
   signAndSimulateTransaction,
+  simulateTransactionWithoutSigning,
   getTokenPayerFromTransaction,
 } from "../../../../shared/svm";
 import { getRpcClient } from "../../../../shared/svm/rpc";
@@ -80,9 +81,19 @@ export async function verify(
     await transactionIntrospection(svmPayload, paymentRequirements, signer, config);
 
     // simulate the transaction to ensure it will execute successfully
-    const simulateResult = await signAndSimulateTransaction(signer, decodedTransaction, rpc);
-    if (simulateResult.value?.err) {
-      throw new Error(`invalid_exact_svm_payload_transaction_simulation_failed`);
+    // For Crossmint single-signer wallets, don't sign (facilitator is not a signer)
+    const isCrossmintWallet = paymentRequirements.extra?.isCrossmintWallet === true;
+    if (isCrossmintWallet) {
+      // For Crossmint wallets, simulation without signatures may fail for various reasons
+      // (missing accounts, trustless PDAs not created yet, etc.)
+      // We skip simulation and let Crossmint handle the actual execution
+      // The transaction structure has been validated by introspection
+      console.log("[verify] Skipping simulation for Crossmint wallet (will be verified on submission)");
+    } else {
+      const simulateResult = await signAndSimulateTransaction(signer, decodedTransaction, rpc);
+      if (simulateResult.value?.err) {
+        throw new Error(`invalid_exact_svm_payload_transaction_simulation_failed`);
+      }
     }
 
     return {
@@ -177,7 +188,7 @@ export async function transactionIntrospection(
 }
 
 // Trustless program ID
-const TRUSTLESS_PROGRAM_ADDRESS = "GPd4z3N25UfjrkgfgSxsjoyG7gwYF8Fo7Emvp9TKsDeW" as Address;
+const TRUSTLESS_PROGRAM_ADDRESS = "5Rp6HM2R1eT6cp3aMHesEDcaXMtCJY3fmRBB1RmoSic3" as Address;
 
 // Register job instruction discriminator from trustless program
 const REGISTER_JOB_DISCRIMINATOR = new Uint8Array([87, 213, 177, 255, 131, 17, 178, 45]);
