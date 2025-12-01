@@ -1,5 +1,5 @@
 {
-  "name": "x402-axios",
+  "name": "@heyamiko/x402-axios",
   "version": "0.7.0",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -40,7 +40,7 @@
   "dependencies": {
     "axios": "^1.7.9",
     "viem": "^2.21.26",
-    "x402": "workspace:^",
+    "@heyamiko/x402": "workspace:^",
     "zod": "^3.24.2"
   },
   "exports": {

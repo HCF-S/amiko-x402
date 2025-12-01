@@ -1,7 +1,7 @@
 import { config } from "dotenv";
 import express, { Request, Response } from "express";
-import { verify, settle } from "x402/facilitator";
-import { createUnsignedTransaction } from "x402/client";
+import { verify, settle } from "@heyamiko/x402/facilitator";
+import { createUnsignedTransaction } from "@heyamiko/x402/client";
 import {
   PaymentRequirementsSchema,
   type PaymentRequirements,
@@ -16,7 +16,7 @@ import {
   SupportedPaymentKind,
   isSvmSignerWallet,
   type X402Config,
-} from "x402/types";
+} from "@heyamiko/x402/types";
 import { getFacilitatorPage } from "./page.js";
 
 config();

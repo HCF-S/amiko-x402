@@ -14,15 +14,15 @@ importers:
 
   facilitator:
     dependencies:
+      '@heyamiko/x402':
+        specifier: workspace:*
+        version: link:../packages/x402
       dotenv:
         specifier: ^16.4.7
         version: 16.6.1
       express:
         specifier: ^4.18.2
         version: 4.21.2
-      x402:
-        specifier: workspace:*
-        version: link:../packages/x402
     devDependencies:
       '@types/express':
         specifier: ^4.17.21
@@ -169,15 +169,15 @@ importers:
 
   packages/x402-axios:
     dependencies:
+      '@heyamiko/x402':
+        specifier: workspace:^
+        version: link:../x402
       axios:
         specifier: ^1.7.9
         version: 1.13.2
       viem:
         specifier: ^2.21.26
         version: 2.38.6(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)
-      x402:
-        specifier: workspace:^
-        version: link:../x402
       zod:
         specifier: ^3.24.2
         version: 3.25.76
@@ -233,6 +233,9 @@ importers:
       '@coinbase/cdp-sdk':
         specifier: ^1.22.0
         version: 1.38.5(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@5.0.10)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+      '@heyamiko/x402':
+        specifier: workspace:^
+        version: link:../x402
       '@solana/kit':
         specifier: ^2.1.1
         version: 2.3.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -242,9 +245,6 @@ importers:
       viem:
         specifier: ^2.21.26
         version: 2.38.6(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)
-      x402:
-        specifier: workspace:^
-        version: link:../x402
       zod:
         specifier: ^3.24.2
         version: 3.25.76
@@ -300,12 +300,12 @@ importers:
 
   packages/x402-fetch:
     dependencies:
+      '@heyamiko/x402':
+        specifier: workspace:^
+        version: link:../x402
       viem:
         specifier: ^2.21.26
         version: 2.38.6(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)
-      x402:
-        specifier: workspace:^
-        version: link:../x402
       zod:
         specifier: ^3.24.2
         version: 3.25.76
@@ -361,6 +361,9 @@ importers:
       '@coinbase/cdp-sdk':
         specifier: ^1.22.0
         version: 1.38.5(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@5.0.10)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+      '@heyamiko/x402':
+        specifier: workspace:^
+        version: link:../x402
       '@solana/kit':
         specifier: ^2.1.1
         version: 2.3.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -370,9 +373,6 @@ importers:
       viem:
         specifier: ^2.21.26
         version: 2.38.6(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)
-      x402:
-        specifier: workspace:^
-        version: link:../x402
       zod:
         specifier: ^3.24.2
         version: 3.25.76
@@ -428,6 +428,9 @@ importers:
       '@coinbase/cdp-sdk':
         specifier: ^1.22.0
         version: 1.38.5(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@5.0.10)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+      '@heyamiko/x402':
+        specifier: workspace:^
+        version: link:../x402
       '@solana/kit':
         specifier: ^2.1.1
         version: 2.3.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -437,9 +440,6 @@ importers:
       viem:
         specifier: ^2.21.26
         version: 2.38.6(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)
-      x402:
-        specifier: workspace:^
-        version: link:../x402
       zod:
         specifier: ^3.24.2
         version: 3.25.76
@@ -498,6 +498,12 @@ importers:
       '@coinbase/onchainkit':
         specifier: ^0.38.14
         version: 0.38.19(@farcaster/miniapp-sdk@0.2.1(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76))(@react-native-async-storage/async-storage@1.24.0(react-native@0.82.1(@babel/core@7.28.5)(@types/react@19.2.2)(bufferutil@4.0.9)(react@19.2.0)(utf-8-validate@5.0.10)))(@tanstack/query-core@5.90.7)(@types/react@19.2.2)(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(react-dom@19.2.0(react@19.2.0))(react-native@0.82.1(@babel/core@7.28.5)(@types/react@19.2.2)(bufferutil@4.0.9)(react@19.2.0)(utf-8-validate@5.0.10))(react@19.2.0)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.0))(utf-8-validate@5.0.10)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76)
+      '@heyamiko/x402':
+        specifier: workspace:*
+        version: link:../packages/x402
+      '@heyamiko/x402-hono':
+        specifier: workspace:*
+        version: link:../packages/x402-hono
       '@hono/node-server':
         specifier: ^1.19.6
         version: 1.19.6(hono@4.10.4)
@@ -567,12 +573,6 @@ importers:
       wagmi:
         specifier: ^2.15.6
         version: 2.19.2(@react-native-async-storage/async-storage@1.24.0(react-native@0.82.1(@babel/core@7.28.5)(@types/react@19.2.2)(bufferutil@4.0.9)(react@19.2.0)(utf-8-validate@5.0.10)))(@tanstack/query-core@5.90.7)(@tanstack/react-query@5.90.7(react@19.2.0))(@types/react@19.2.2)(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(react-native@0.82.1(@babel/core@7.28.5)(@types/react@19.2.2)(bufferutil@4.0.9)(react@19.2.0)(utf-8-validate@5.0.10))(react@19.2.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(viem@2.38.6(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76)
-      x402:
-        specifier: workspace:*
-        version: link:../packages/x402
-      x402-hono:
-        specifier: workspace:*
-        version: link:../packages/x402-hono
       zod:
         specifier: ^3.24.2
         version: 3.25.76

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import { config } from "dotenv";
-import { type Resource, type SolanaAddress } from "x402-hono";
+import { type Resource, type SolanaAddress } from "@heyamiko/x402-hono";
 
 import { createHealthRoute } from "./routes/health.js";
 import { createTimeRoutes } from "./routes/time.js";

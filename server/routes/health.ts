@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { type SolanaAddress } from "x402-hono";
+import { type SolanaAddress } from "@heyamiko/x402-hono";
 
 type NetworkConfig = {
   solanaAddress?: SolanaAddress;

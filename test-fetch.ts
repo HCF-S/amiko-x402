@@ -1,4 +1,4 @@
-import { wrapFetchWithPayment, createSigner } from './packages/x402-fetch/src/index.js';
+import { wrapFetchWithPayment, createSigner } from '@heyamiko/x402-fetch';
 
 const testWalletPrivateKey = "5XmdUGwiujfbd5uEYcoPbZGsXYx49Bqt81nt2RUgcVuuAWvRZtcWjbpEdPVu6Lde1kztDW5WFCQofamdAKX6QDZF";
 const x402Endpoint = "https://x402-server.heyamiko.com/solana-devnet/time";

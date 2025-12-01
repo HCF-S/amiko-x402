@@ -1,5 +1,5 @@
 {
-  "name": "x402-fetch",
+  "name": "@heyamiko/x402-fetch",
   "version": "0.7.0",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -40,7 +40,7 @@
   "dependencies": {
     "viem": "^2.21.26",
     "zod": "^3.24.2",
-    "x402": "workspace:^"
+    "@heyamiko/x402": "workspace:^"
   },
   "exports": {
     ".": {

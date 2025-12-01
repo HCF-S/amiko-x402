@@ -35,8 +35,8 @@
     "twitter-api-sdk": "^1.2.1",
     "viem": "^2.21.26",
     "wagmi": "^2.15.6",
-    "x402": "workspace:*",
-    "x402-hono": "workspace:*",
+    "@heyamiko/x402": "workspace:*",
+    "@heyamiko/x402-hono": "workspace:*",
     "zod": "^3.24.2"
   },
   "devDependencies": {

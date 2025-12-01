@@ -10,12 +10,12 @@ import {
   Network,
   evm,
   X402Config,
-} from "x402/types";
+} from "@heyamiko/x402/types";
 import {
   createPaymentHeader,
   PaymentRequirementsSelector,
   selectPaymentRequirements,
-} from "x402/client";
+} from "@heyamiko/x402/client";
 
 /**
  * Enables the payment of APIs using the x402 payment protocol.
@@ -112,7 +112,7 @@ export function withPaymentInterceptor(
   return axiosClient;
 }
 
-export { decodeXPaymentResponse } from "x402/shared";
-export { createSigner, type Signer, type MultiNetworkSigner, type X402Config } from "x402/types";
-export { type PaymentRequirementsSelector } from "x402/client";
+export { decodeXPaymentResponse } from "@heyamiko/x402/shared";
+export { createSigner, type Signer, type MultiNetworkSigner, type X402Config } from "@heyamiko/x402/types";
+export { type PaymentRequirementsSelector } from "@heyamiko/x402/client";
 export type { Hex } from "viem";

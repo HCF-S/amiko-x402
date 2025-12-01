@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { paymentMiddleware, type Resource, type SolanaAddress, type Network } from "x402-hono";
+import { paymentMiddleware, type Resource, type SolanaAddress, type Network } from "@heyamiko/x402-hono";
 import Exa from "exa-js";
 
 type PaymentConfig = {
