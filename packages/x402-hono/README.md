@@ -1,18 +1,18 @@
-# x402-hono
+# @heyamiko/x402-hono
 
 Hono middleware integration for the x402 Payment Protocol. This package allows you to easily add paywall functionality to your Hono applications using the x402 protocol.
 
 ## Installation
 
 ```bash
-npm install x402-hono
+npm install @heyamiko/x402-hono
 ```
 
 ## Quick Start
 
 ```typescript
 import { Hono } from "hono";
-import { paymentMiddleware, Network } from "x402-hono";
+import { paymentMiddleware, Network } from "@heyamiko/x402-hono";
 
 const app = new Hono();
 
@@ -93,7 +93,7 @@ type FacilitatorConfig = {
 
 ### Paywall Configuration
 
-For more on paywall configuration options, refer to the [paywall README](../x402/src/paywall/README.md).
+For more on paywall configuration options, refer to the [paywall README](../@heyamiko/x402/src/paywall/README.md).
 
 ```typescript
 type PaywallConfig = {
@@ -118,7 +118,7 @@ Add a session token endpoint to your Hono app:
 
 ```typescript
 import { Hono } from "hono";
-import { POST } from "x402-hono/session-token";
+import { POST } from "@heyamiko/x402-hono/session-token";
 
 const app = new Hono();
 

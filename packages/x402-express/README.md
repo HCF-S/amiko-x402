@@ -1,18 +1,18 @@
-# x402-express
+# @heyamiko/x402-express
 
 Express middleware integration for the x402 Payment Protocol. This package allows you to easily add paywall functionality to your Express.js applications using the x402 protocol.
 
 ## Installation
 
 ```bash
-npm install x402-express
+npm install @heyamiko/x402-express
 ```
 
 ## Quick Start
 
 ```typescript
 import express from "express";
-import { paymentMiddleware, Network } from "x402-express";
+import { paymentMiddleware, Network } from "@heyamiko/x402-express";
 
 const app = express();
 
@@ -91,7 +91,7 @@ type FacilitatorConfig = {
 
 ### Paywall Configuration
 
-For more on paywall configuration options, refer to the [paywall README](../x402/src/paywall/README.md).
+For more on paywall configuration options, refer to the [paywall README](../@heyamiko/x402/src/paywall/README.md).
 
 ```typescript
 type PaywallConfig = {
@@ -116,7 +116,7 @@ Add a session token endpoint to your Express app:
 
 ```typescript
 import express from "express";
-import { POST } from "x402-express/session-token";
+import { POST } from "@heyamiko/x402-express/session-token";
 
 const app = express();
 
@@ -188,7 +188,7 @@ Once set up, your x402 paywall will automatically show a "Get more USDC" button 
 3. **API route not found**
     - Ensure you've added the session token route: `app.post("/your-path", POST)`
     - Check that your route path matches your `sessionTokenEndpoint` configuration
-    - Verify the import: `import { POST } from "x402-express/session-token"`
+    - Verify the import: `import { POST } from "@heyamiko/x402-express/session-token"`
     - Example: If you configured `sessionTokenEndpoint: "/api/custom/onramp"`, add `app.post("/api/custom/onramp", POST)`
 
 

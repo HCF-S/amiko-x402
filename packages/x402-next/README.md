@@ -1,11 +1,11 @@
-# x402-next
+# @heyamiko/x402-next
 
 Next.js middleware integration for the x402 Payment Protocol. This package allows you to easily add paywall functionality to your Next.js applications using the x402 protocol.
 
 ## Installation
 
 ```bash
-npm install x402-next
+npm install @heyamiko/x402-next
 ```
 
 ## Quick Start
@@ -13,7 +13,7 @@ npm install x402-next
 Create a middleware file in your Next.js project (e.g., `middleware.ts`):
 
 ```typescript
-import { paymentMiddleware, Network } from 'x402-next';
+import { paymentMiddleware, Network } from '@heyamiko/x402-next';
 
 export const middleware = paymentMiddleware(
   "0xYourAddress",
@@ -87,7 +87,7 @@ type FacilitatorConfig = {
 
 ### Paywall Configuration
 
-For more on paywall configuration options, refer to the [paywall README](../x402/src/paywall/README.md).
+For more on paywall configuration options, refer to the [paywall README](../@heyamiko/x402/src/paywall/README.md).
 
 ```typescript
 type PaywallConfig = {
@@ -128,7 +128,7 @@ export default nextConfig;
 
 ```ts
 // middleware.ts
-import { paymentMiddleware } from "x402-next";
+import { paymentMiddleware } from "@heyamiko/x402-next";
 import { facilitator } from "@coinbase/x402";
 
 export const middleware = paymentMiddleware(
@@ -156,7 +156,7 @@ export const config = {
 {
   "dependencies": {
     "next": "canary", // TEMPORARY: Only needed until Edge runtime support is added
-    "x402-next": "^1.0.0",
+    "@heyamiko/x402-next": "^1.0.0",
     "@coinbase/x402": "^1.0.0"
     // other dependencies
   }
@@ -206,10 +206,10 @@ Create an API route that matches the path you configured above:
 
 ```typescript
 // app/api/x402/session-token/route.ts
-export { POST } from "x402-next";
+export { POST } from "@heyamiko/x402-next";
 ```
 
-That's it! The `x402-next` package provides the complete session token implementation.
+That's it! The `@heyamiko/x402-next` package provides the complete session token implementation.
 
 #### 3. Get CDP API Keys
 
