@@ -36,6 +36,7 @@ if (!BASE_MAINNET_PRIVATE_KEY && !BASE_SEPOLIA_PRIVATE_KEY && !SVM_PRIVATE_KEY) 
 
 const CROSSMINT_API_KEY = process.env.CROSSMINT_API_KEY;
 const AMIKO_PLATFORM_API_URL = process.env.AMIKO_PLATFORM_API_URL || 'http://localhost:4114';
+const FACILITATOR_AMIKO_AUTH_KEY = process.env.FACILITATOR_AMIKO_AUTH_KEY;
 
 /**
  * Check if a wallet is Crossmint-managed by querying the platform API
@@ -102,7 +103,7 @@ app.use(express.json());
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type");
+  res.header("Access-Control-Allow-Headers", "Content-Type, X-Amiko-Auth");
   if (req.method === "OPTIONS") {
     return res.sendStatus(200);
   }
@@ -386,9 +387,33 @@ app.post("/settle", async (req: Request, res: Response) => {
     
     const paymentRequirements = PaymentRequirementsSchema.parse(body.paymentRequirements);
     const paymentPayload = PaymentPayloadSchema.parse(body.paymentPayload);
-    
+
     console.log("Payment Requirements:", JSON.stringify(paymentRequirements, null, 2));
     console.log("Payment Payload:", JSON.stringify(paymentPayload, null, 2));
+
+    // For Crossmint wallets, require authentication via X-Amiko-Auth header
+    // This ensures only Amiko can trigger Crossmint wallet signing
+    if (paymentRequirements.extra?.isCrossmintWallet) {
+      const authHeader = req.header("X-Amiko-Auth");
+
+      if (!FACILITATOR_AMIKO_AUTH_KEY) {
+        console.error("[settle] FACILITATOR_AMIKO_AUTH_KEY not configured but Crossmint wallet detected");
+        return res.status(500).json({
+          error: "Server configuration error",
+          message: "Crossmint wallet signing is not properly configured",
+        });
+      }
+
+      if (!authHeader || authHeader !== FACILITATOR_AMIKO_AUTH_KEY) {
+        console.warn("[settle] Unauthorized Crossmint wallet signing attempt");
+        return res.status(401).json({
+          error: "Unauthorized",
+          message: "Valid X-Amiko-Auth header required for Crossmint wallet transactions",
+        });
+      }
+
+      console.log("[settle] Crossmint wallet auth validated");
+    }
 
     // Use the correct private key based on the requested network
     let signer: Signer;
@@ -431,11 +456,18 @@ app.post("/settle", async (req: Request, res: Response) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Amiko x402 Facilitator running at http://localhost:${PORT}`);
-  console.log(`Supported networks:`);
-  if (BASE_MAINNET_PRIVATE_KEY) console.log(`  - Base Mainnet (EVM)`);
-  if (BASE_SEPOLIA_PRIVATE_KEY) console.log(`  - Base Sepolia (EVM)`);
-  if (SVM_PRIVATE_KEY && SVM_MAINNET_RPC_URL) console.log(`  - Solana Mainnet (SVM)`);
-  if (SVM_PRIVATE_KEY && SVM_DEVNET_RPC_URL) console.log(`  - Solana Devnet (SVM)`);
-});
+// Export app for testing
+export { app };
+
+// Only start server if this file is run directly (not imported for testing)
+const isMainModule = process.argv[1]?.includes('index');
+if (isMainModule) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Amiko x402 Facilitator running at http://localhost:${PORT}`);
+    console.log(`Supported networks:`);
+    if (BASE_MAINNET_PRIVATE_KEY) console.log(`  - Base Mainnet (EVM)`);
+    if (BASE_SEPOLIA_PRIVATE_KEY) console.log(`  - Base Sepolia (EVM)`);
+    if (SVM_PRIVATE_KEY && SVM_MAINNET_RPC_URL) console.log(`  - Solana Mainnet (SVM)`);
+    if (SVM_PRIVATE_KEY && SVM_DEVNET_RPC_URL) console.log(`  - Solana Devnet (SVM)`);
+  });
+}
