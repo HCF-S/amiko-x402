@@ -706,6 +706,13 @@ Break-even: Immediate (first transaction)
 
 ### Network Congestion Impact
 
+#### Low Congestion (100 micro-lamports/CU)
+
+| Transaction | Traditional | Compressed | Savings |
+|-------------|-------------|------------|---------|
+| Register Job | 542,000 lamports | 46,200 lamports | **495,800 lamports** ✅ |
+| Submit Feedback | 1,840,000 lamports | 40,700 lamports | **1,799,300 lamports** ✅ |
+
 #### Medium Congestion (1,000 micro-lamports/CU) - TYPICAL
 
 | Transaction | Traditional | Compressed | Savings |
@@ -713,14 +720,20 @@ Break-even: Immediate (first transaction)
 | Register Job | 569,000 lamports | 327,000 lamports | **242,000 lamports** ✅ |
 | Submit Feedback | 1,872,000 lamports | 317,000 lamports | **1,555,000 lamports** ✅ |
 
-**This is the typical scenario - compression is clearly beneficial.**
-
 #### High Congestion (10,000 micro-lamports/CU)
 
 | Transaction | Traditional | Compressed | Savings |
 |-------------|-------------|------------|---------|
 | Register Job | 839,000 lamports | 3,137,000 lamports | **-2,298,000 lamports** ❌ |
 | Submit Feedback | 2,142,000 lamports | 3,077,000 lamports | **-935,000 lamports** ❌ |
+
+### Congestion Scenario Summary
+
+| Scenario | Job Savings | Feedback Savings | Total Savings (10k volume) |
+|----------|-------------|------------------|----------------------------|
+| **Low** (100) | 91.5% | 97.8% | **22.95 SOL** ($3,442) |
+| **Medium** (1k) | 42.5% | 83.1% | **17.97 SOL** ($2,695) |
+| **High** (10k) | -274% | -43% | **-32.33 SOL** (-$4,850) |
 
 > [!CAUTION]
 > During extreme congestion, compressed transactions become MORE expensive due to 10x higher compute usage. However, the rent savings still accumulate over time.
