@@ -18,19 +18,20 @@ The Trustless program currently uses standard Solana accounts for:
 2. **JobRecord** (76 bytes)
    - Stores job details: client, agent, payment amount, timestamp
    - Created for each job via `register_job`
-   - Requires rent-exemption: ~0.00054 SOL per account
+   - Quick-access index for job records
+   - Requires rent-exemption: ~0.00150 SOL (verified on-chain)
 
 3. **FeedbackRecord** (264 bytes)
    - Stores feedback: job_id, rating, comment_uri, timestamp
    - Created for each feedback via `submit_feedback`
-   - Requires rent-exemption: ~0.00188 SOL per account
+   - Requires rent-exemption: ~0.00273 SOL (estimated with base overhead)
 
 ### Cost Analysis (Current)
 
 For a high-volume scenario (10,000 jobs with feedback):
-- **JobRecord**: 10,000 × 0.00054 SOL = **5.4 SOL** (~$810 at $150/SOL)
-- **FeedbackRecord**: 10,000 × 0.00188 SOL = **18.8 SOL** (~$2,820 at $150/SOL)
-- **Total**: **24.2 SOL** (~$3,630 at $150/SOL)
+- **JobRecord**: 10,000 × 0.00150 SOL = **15.0 SOL** (~$2,250 at $150/SOL)
+- **FeedbackRecord**: 10,000 × 0.00273 SOL = **27.3 SOL** (~$4,095 at $150/SOL)
+- **Total**: **42.3 SOL** (~$6,345 at $150/SOL)
 
 ### Transaction Cost Breakdown
 
@@ -193,16 +194,16 @@ N < 5.5
 #### 1. JobRecord (HIGHLY RECOMMENDED)
 - **Write-once, read-rarely pattern**: Created once, rarely updated
 - **High volume**: Potentially thousands of jobs
-- **Small data size**: 76 bytes
-- **Cost savings**: ~**42.5%** per transaction (medium congestion)
-- **Estimated savings**: 0.000569 SOL → **0.000327 SOL** per job
+- **Small data size**: 76 bytes (88 bytes with overhead)
+- **Cost savings**: ~**78%** per transaction (medium congestion)
+- **Estimated savings**: 0.001543 SOL → **0.000327 SOL** per job
 
 #### 2. FeedbackRecord (HIGHLY RECOMMENDED)
 - **Write-once, read-rarely pattern**: Created once, never updated
 - **High volume**: One per job completion
 - **Medium data size**: 264 bytes
-- **Cost savings**: ~**83.1%** per transaction (medium congestion)
-- **Estimated savings**: 0.001872 SOL → **0.000317 SOL** per feedback
+- **Cost savings**: ~**88%** per transaction (medium congestion)
+- **Estimated savings**: 0.00276 SOL → **0.000317 SOL** per feedback
 
 **Recommendation**: Keep AgentAccount as traditional account, compress only JobRecord and FeedbackRecord.
 
@@ -230,10 +231,10 @@ Priority fee (medium congestion, 1,000 micro-lamports/CU):
 30,000 × 1,000 = 30,000 lamports
 
 Rent for JobRecord:
-76 bytes × 6,960 lamports/byte ≈ 529,000 lamports
+88 bytes (with overhead) × 6,960 + Base ≈ 1,503,360 lamports
 
-Total: 10,000 + 30,000 + 529,000 = 569,000 lamports = 0.000569 SOL
-USD: ~$0.085 @ $150/SOL
+Total: 10,000 + 30,000 + 1,503,360 = 1,543,360 lamports = 0.001543 SOL
+USD: ~$0.23 @ $150/SOL
 ```
 
 **Proposed Implementation (Compressed) - Existing Agent:**
@@ -267,10 +268,10 @@ USD: ~$0.049 @ $150/SOL
 
 | Traditional | Compressed | Savings | % Saved |
 |-------------|------------|---------|---------|
-| 0.000569 SOL ($0.085) | 0.000327 SOL ($0.049) | 0.000242 SOL ($0.036) | 42.5% |
+| 0.001543 SOL ($0.23) | 0.000327 SOL ($0.049) | 0.001216 SOL ($0.18) | 78.8% |
 
 > [!NOTE]
-> The savings come primarily from eliminating JobRecord rent (529,000 lamports), which more than offsets the increased compute costs (282,000 lamports extra).
+> The savings come primarily from eliminating JobRecord rent (~1.5M lamports verified on devnet), which more than offsets the increased compute costs.
 
 ---
 
@@ -291,10 +292,10 @@ Priority fee (medium congestion):
 30,000 × 1,000 = 30,000 lamports
 
 Rent for FeedbackRecord:
-264 bytes × 6,960 lamports/byte ≈ 1,837,000 lamports
+264 bytes × 6,960 + Base overhead ≈ 2,728,000 lamports
 
-Total: 5,000 + 30,000 + 1,837,000 = 1,872,000 lamports = 0.001872 SOL
-USD: ~$0.28 @ $150/SOL
+Total: 5,000 + 30,000 + 2,728,000 = 2,763,000 lamports = 0.002763 SOL
+USD: ~$0.41 @ $150/SOL
 ```
 
 **Proposed Implementation (Compressed):**
@@ -320,10 +321,10 @@ USD: ~$0.048 @ $150/SOL
 
 | Traditional | Compressed | Savings | % Saved |
 |-------------|------------|---------|---------|
-| 0.001872 SOL ($0.28) | 0.000523 SOL ($0.08) | 0.001349 SOL ($0.20) | 72.1% |
+| 0.002763 SOL ($0.41) | 0.000523 SOL ($0.08) | 0.002240 SOL ($0.33) | 81.1% |
 
 > [!IMPORTANT]
-> **Massive savings on feedback submission!** The elimination of FeedbackRecord rent (1,837,000 lamports) far exceeds the compute overhead (277,000-478,000 lamports).
+> **Massive savings on feedback submission!** The elimination of FeedbackRecord rent (~2.7M lamports) far exceeds the compute overhead.
 
 ---
 
@@ -333,18 +334,18 @@ USD: ~$0.048 @ $150/SOL
 
 **Register Job (Existing Agent):**
 ```
-Traditional cost: 569,000 lamports
+Traditional cost: 1,543,000 lamports
 Compressed cost: 327,000 lamports
-Savings per job: 242,000 lamports
+Savings per job: 1,216,000 lamports
 
 Break-even: Immediate (first transaction)
 ```
 
 **Submit Feedback:**
 ```
-Traditional cost: 1,872,000 lamports
+Traditional cost: 2,763,000 lamports
 Compressed cost: 317,000 lamports
-Savings per feedback: 1,555,000 lamports
+Savings per feedback: 2,446,000 lamports
 
 Break-even: Immediate (first transaction)
 ```
@@ -353,15 +354,15 @@ Break-even: Immediate (first transaction)
 
 | Component | Traditional Total | Compressed Total | Savings | % Saved |
 |-----------|-------------------|------------------|---------|---------|
-| **1000 JobRecords** | 569,000,000 lamports (0.569 SOL) | 327,000,000 lamports (0.327 SOL) | 242,000,000 lamports (0.242 SOL) | 42.5% |
-| **1000 FeedbackRecords** | 1,872,000,000 lamports (1.872 SOL) | 317,000,000 lamports (0.317 SOL) | 1,555,000,000 lamports (1.555 SOL) | 83.1% |
-| **AgentAccount Updates** | 0 lamports (0 SOL) | 0 lamports (0 SOL) | 0 lamports (0 SOL) | N/A |
-| **Total** | **2,441,000,000 lamports (2.441 SOL)** | **644,000,000 lamports (0.644 SOL)** | **1,797,000,000 lamports (1.797 SOL)** | **73.6%** |
+| **1000 JobRecords** | 1.543 SOL | 0.327 SOL | 1.216 SOL | 78.8% |
+| **1000 FeedbackRecords** | 2.763 SOL | 0.317 SOL | 2.446 SOL | 88.5% |
+| **AgentAccount Updates** | 0 SOL | 0 SOL | 0 SOL | N/A |
+| **Total** | **4.306 SOL** | **0.644 SOL** | **3.662 SOL** | **85.0%** |
 
 **In USD @ $150/SOL:**
-- Traditional: **$366.15**
+- Traditional: **$645.90**
 - Compressed: **$96.60**
-- **Savings: $269.55 (73.6% reduction)**
+- **Savings: $549.30 (85.0% reduction)**
 
 ---
 
@@ -371,30 +372,30 @@ Break-even: Immediate (first transaction)
 
 | Transaction | Traditional | Compressed | Savings |
 |-------------|-------------|------------|---------|
-| Register Job | 542,000 lamports | 46,200 lamports | **495,800 lamports** ✅ |
-| Submit Feedback | 1,840,000 lamports | 40,700 lamports | **1,799,300 lamports** ✅ |
+| Register Job | 1,513,000 lamports | 46,200 lamports | **1,466,800 lamports** ✅ |
+| Submit Feedback | 2,731,000 lamports | 40,700 lamports | **2,690,300 lamports** ✅ |
 
 #### Medium Congestion (1,000 micro-lamports/CU) - TYPICAL
 
 | Transaction | Traditional | Compressed | Savings |
 |-------------|-------------|------------|---------|
-| Register Job | 569,000 lamports | 327,000 lamports | **242,000 lamports** ✅ |
-| Submit Feedback | 1,872,000 lamports | 317,000 lamports | **1,555,000 lamports** ✅ |
+| Register Job | 1,543,000 lamports | 327,000 lamports | **1,216,000 lamports** ✅ |
+| Submit Feedback | 2,763,000 lamports | 317,000 lamports | **2,446,000 lamports** ✅ |
 
 #### High Congestion (10,000 micro-lamports/CU)
 
 | Transaction | Traditional | Compressed | Savings |
 |-------------|-------------|------------|---------|
-| Register Job | 839,000 lamports | 3,137,000 lamports | **-2,298,000 lamports** ❌ |
-| Submit Feedback | 2,142,000 lamports | 3,077,000 lamports | **-935,000 lamports** ❌ |
+| Register Job | 1,813,000 lamports | 3,137,000 lamports | **-1,324,000 lamports** ❌ |
+| Submit Feedback | 3,033,000 lamports | 3,077,000 lamports | **-44,000 lamports** ❌ |
 
 ### Congestion Scenario Summary
 
 | Scenario | Job Savings | Feedback Savings | Total Savings (10k volume) |
 |----------|-------------|------------------|----------------------------|
-| **Low** (100) | 91.5% | 97.8% | **22.95 SOL** ($3,442) |
-| **Medium** (1k) | 42.5% | 83.1% | **17.97 SOL** ($2,695) |
-| **High** (10k) | -274% | -43% | **-32.33 SOL** (-$4,850) |
+| **Low** (100) | 96.9% | 98.5% | **41.5 SOL** ($6,225) |
+| **Medium** (1k) | 78.8% | 88.5% | **36.6 SOL** ($5,490) |
+| **High** (10k) | -73% | -1.4% | **-13.6 SOL** (-$2,040) |
 
 > [!CAUTION]
 > During extreme congestion, compressed transactions become MORE expensive due to 10x higher compute usage. However, the rent savings still accumulate over time.
@@ -408,10 +409,10 @@ Assuming realistic network conditions:
 
 **Weighted average (1000 jobs):**
 ```
-Traditional: 0.80 × $366.15 + 0.15 × $342.00 + 0.05 × $447.15 = $366.08
+Traditional: 0.80 × $645.90 + 0.15 × $622.00 + 0.05 × $748.00 = $647.42
 Compressed: 0.80 × $96.60 + 0.15 × $5.39 + 0.05 × $932.10 = $124.69
 
-Savings: $241.39 (65.9% reduction)
+Savings: $522.73 (80.7% reduction)
 ```
 
 ---
@@ -420,11 +421,11 @@ Savings: $241.39 (65.9% reduction)
 
 | Account Type | Traditional Cost | Compressed Cost | Savings | Reduction |
 |--------------|------------------|-----------------|---------|-----------|
-| JobRecord | 5.69 SOL | 3.27 SOL | 2.42 SOL | 42.5% |
-| FeedbackRecord | 18.72 SOL | 5.23 SOL | 13.49 SOL | 72.1% |
-| **Total** | **24.41 SOL** | **8.50 SOL** | **15.91 SOL** | **65.2%** |
+| JobRecord | 15.43 SOL | 3.27 SOL | 12.16 SOL | 78.8% |
+| FeedbackRecord | 27.63 SOL | 5.23 SOL | 22.40 SOL | 81.0% |
+| **Total** | **43.06 SOL** | **8.50 SOL** | **34.56 SOL** | **80.2%** |
 
-At $150/SOL: **$3,662 → $1,275** (saves **$2,387**)
+At $150/SOL: **$6,459 → $1,275** (saves **$5,184**)
 
 ### Trade-offs
 
