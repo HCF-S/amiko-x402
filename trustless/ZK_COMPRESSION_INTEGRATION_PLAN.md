@@ -28,9 +28,9 @@ The Trustless program currently uses standard Solana accounts for:
 ### Cost Analysis (Current)
 
 For a high-volume scenario (10,000 jobs with feedback):
-- **JobRecord**: 10,000 × 0.00054 SOL = **5.4 SOL** (~$1,080 at $200/SOL)
-- **FeedbackRecord**: 10,000 × 0.00188 SOL = **18.8 SOL** (~$3,760 at $200/SOL)
-- **Total**: **24.2 SOL** (~$4,840 at $200/SOL)
+- **JobRecord**: 10,000 × 0.00054 SOL = **5.4 SOL** (~$810 at $150/SOL)
+- **FeedbackRecord**: 10,000 × 0.00188 SOL = **18.8 SOL** (~$2,820 at $150/SOL)
+- **Total**: **24.2 SOL** (~$3,630 at $150/SOL)
 
 ### Transaction Cost Breakdown
 
@@ -56,6 +56,7 @@ For a high-volume scenario (10,000 jobs with feedback):
 
 | Network Condition | CU Price (micro-lamports/CU) | Cost per 100K CU |
 |-------------------|------------------------------|------------------|
+| **No Priority Fee** | 0 | 0 lamports (0 SOL) |
 | **Low congestion** | 100 | 10,000 lamports (0.00001 SOL) |
 | **Medium congestion** | 1,000 | 100,000 lamports (0.0001 SOL) |
 | **High congestion** | 10,000 | 1,000,000 lamports (0.001 SOL) |
@@ -144,7 +145,7 @@ Each compressed account operation adds:
 ```
 Creation: 0.00228 SOL (rent-exempt minimum)
 Updates: 0 SOL (no additional cost)
-Total: 0.00228 SOL = ~$0.46 @ $200/SOL
+Total: 0.00228 SOL = ~$0.34 @ $150/SOL
 ```
 
 **Compressed AgentAccount (1000 jobs):**
@@ -159,14 +160,14 @@ Update cost = 412,000,000 CU × 1,000 micro-lamports/CU
            = 0.000412 SOL per update
 
 Total updates: 2000 × 0.000412 SOL = 0.824 SOL
-Total: 0.000005 + 0.824 = 0.824005 SOL = ~$164.80 @ $200/SOL
+Total: 0.000005 + 0.824 = 0.824005 SOL = ~$123.60 @ $150/SOL
 ```
 
 > [!CAUTION]
 > **Compressed AgentAccount would cost 361x MORE than traditional account!**
-> - Traditional: $0.46
-> - Compressed: $164.80
-> - **Loss: $164.34 per 1000 jobs**
+> - Traditional: $0.34
+> - Compressed: $123.60
+> - **Loss: $123.26 per 1000 jobs**
 
 #### When Compression Makes Sense
 
@@ -571,7 +572,7 @@ Rent for JobRecord:
 76 bytes × 6,960 lamports/byte ≈ 529,000 lamports
 
 Total: 10,000 + 30,000 + 529,000 = 569,000 lamports = 0.000569 SOL
-USD: ~$0.11 @ $200/SOL
+USD: ~$0.085 @ $150/SOL
 ```
 
 **Proposed Implementation (Compressed) - Existing Agent:**
@@ -598,14 +599,14 @@ Rent for CompressedJobRecord: 0 lamports
 State tree write cost: 5,000 lamports
 
 Total: 10,000 + 312,000 + 5,000 = 327,000 lamports = 0.000327 SOL
-USD: ~$0.065 @ $200/SOL
+USD: ~$0.049 @ $150/SOL
 ```
 
 **Comparison: Register Job**
 
 | Traditional | Compressed | Savings | % Saved |
 |-------------|------------|---------|---------|
-| 0.000569 SOL ($0.11) | 0.000327 SOL ($0.065) | 0.000242 SOL ($0.048) | 42.5% |
+| 0.000569 SOL ($0.085) | 0.000327 SOL ($0.049) | 0.000242 SOL ($0.036) | 42.5% |
 
 > [!NOTE]
 > The savings come primarily from eliminating JobRecord rent (529,000 lamports), which more than offsets the increased compute costs (282,000 lamports extra).
@@ -632,7 +633,7 @@ Rent for FeedbackRecord:
 264 bytes × 6,960 lamports/byte ≈ 1,837,000 lamports
 
 Total: 5,000 + 30,000 + 1,837,000 = 1,872,000 lamports = 0.001872 SOL
-USD: ~$0.37 @ $200/SOL
+USD: ~$0.28 @ $150/SOL
 ```
 
 **Proposed Implementation (Compressed):**
@@ -653,12 +654,12 @@ Rent: 0 lamports
 State tree write: 5,000 lamports
 
 Total: 5,000 + 307,000 + 5,000 = 317,000 lamports = 0.000317 SOL
-USD: ~$0.063 @ $200/SOL
+USD: ~$0.048 @ $150/SOL
 ```
 
 | Traditional | Compressed | Savings | % Saved |
 |-------------|------------|---------|---------|
-| 0.001872 SOL ($0.37) | 0.000523 SOL ($0.10) | 0.001349 SOL ($0.27) | 72.1% |
+| 0.001872 SOL ($0.28) | 0.000523 SOL ($0.08) | 0.001349 SOL ($0.20) | 72.1% |
 
 > [!IMPORTANT]
 > **Massive savings on feedback submission!** The elimination of FeedbackRecord rent (1,837,000 lamports) far exceeds the compute overhead (277,000-478,000 lamports).
@@ -696,10 +697,10 @@ Break-even: Immediate (first transaction)
 | **AgentAccount Updates** | 0 lamports (0 SOL) | 0 lamports (0 SOL) | 0 lamports (0 SOL) | N/A |
 | **Total** | **2,441,000,000 lamports (2.441 SOL)** | **644,000,000 lamports (0.644 SOL)** | **1,797,000,000 lamports (1.797 SOL)** | **73.6%** |
 
-**In USD @ $200/SOL:**
-- Traditional: **$488.20**
-- Compressed: **$128.80**
-- **Savings: $359.40 (73.6% reduction)**
+**In USD @ $150/SOL:**
+- Traditional: **$366.15**
+- Compressed: **$96.60**
+- **Savings: $269.55 (73.6% reduction)**
 
 ---
 
@@ -733,10 +734,10 @@ Assuming realistic network conditions:
 
 **Weighted average (1000 jobs):**
 ```
-Traditional: 0.80 × $488.20 + 0.15 × $456.00 + 0.05 × $596.20 = $488.11
-Compressed: 0.80 × $128.80 + 0.15 × $7.18 + 0.05 × $1,242.80 = $166.38
+Traditional: 0.80 × $366.15 + 0.15 × $342.00 + 0.05 × $447.15 = $366.08
+Compressed: 0.80 × $96.60 + 0.15 × $5.39 + 0.05 × $932.10 = $124.69
 
-Savings: $321.73 (65.9% reduction)
+Savings: $241.39 (65.9% reduction)
 ```
 
 ---
@@ -749,7 +750,7 @@ Savings: $321.73 (65.9% reduction)
 | FeedbackRecord | 18.72 SOL | 5.23 SOL | 13.49 SOL | 72.1% |
 | **Total** | **24.41 SOL** | **8.50 SOL** | **15.91 SOL** | **65.2%** |
 
-At $200/SOL: **$4,882 → $1,700** (saves **$3,182**)
+At $150/SOL: **$3,662 → $1,275** (saves **$2,387**)
 
 ### Trade-offs
 
