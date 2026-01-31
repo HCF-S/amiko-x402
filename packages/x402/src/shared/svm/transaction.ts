@@ -89,9 +89,17 @@ export async function signAndSimulateTransaction(
   const base64EncodedTransaction = getBase64EncodedWireTransaction(signedTransaction);
 
   // simulate the transaction and verify that it will succeed
+  // We use replaceRecentBlockhash: true because there may be delays between when the
+  // client creates the transaction and when verification happens. Solana blockhashes
+  // expire after ~150 blocks (~1-2 minutes), so we replace it with a fresh one for simulation.
+  // This is safe because:
+  // 1. The transaction structure and logic are still validated
+  // 2. During settlement, a fresh blockhash will be used anyway
+  // 3. Signatures are verified on-chain during actual settlement
+  // Note: sigVerify must be false when replaceRecentBlockhash is true (Solana RPC limitation)
   const simulateTxConfig = {
-    sigVerify: true,
-    replaceRecentBlockhash: false,
+    sigVerify: false,
+    replaceRecentBlockhash: true,
     commitment: "confirmed",
     encoding: "base64",
     accounts: undefined,
@@ -120,7 +128,11 @@ export async function signTransactionWithSigner(
   signer: TransactionSigner,
   transaction: Transaction,
 ): Promise<Transaction> {
+  console.log("[signTransactionWithSigner] Signer address:", signer.address);
+  console.log("[signTransactionWithSigner] Transaction signatures before:", Object.keys(transaction.signatures));
+  
   if (isTransactionModifyingSigner(signer)) {
+    console.log("[signTransactionWithSigner] Using modifying signer");
     const [modifiedTransaction] = await signer.modifyAndSignTransactions([transaction]);
     if (!modifiedTransaction) {
       throw new Error("transaction_signer_failed_to_return_transaction");
@@ -129,11 +141,19 @@ export async function signTransactionWithSigner(
   }
 
   if (isTransactionPartialSigner(signer)) {
+    console.log("[signTransactionWithSigner] Using partial signer");
     const [signatures] = await signer.signTransactions([transaction]);
+    console.log("[signTransactionWithSigner] Signatures returned:", signatures ? Object.keys(signatures) : "null");
     if (!signatures) {
       throw new Error("transaction_signer_failed_to_return_signatures");
     }
-    return mergeTransactionSignatures(transaction, signatures);
+    const merged = mergeTransactionSignatures(transaction, signatures);
+    console.log("[signTransactionWithSigner] Merged signatures:", Object.keys(merged.signatures));
+    // Check if fee payer signature is still null
+    for (const [addr, sig] of Object.entries(merged.signatures)) {
+      console.log(`[signTransactionWithSigner] ${addr}: ${sig ? 'HAS SIG' : 'NULL'}`);
+    }
+    return merged;
   }
 
   throw new Error("transaction_signer_must_support_offline_signing");

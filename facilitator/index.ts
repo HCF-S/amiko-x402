@@ -299,6 +299,8 @@ app.post("/verify", async (req: Request, res: Response) => {
 
     // Verify payment
     console.log("Calling verify...");
+    console.log("Signer address:", (client as any).address);
+    console.log("Expected fee payer:", paymentRequirements.extra?.feePayer);
     const config = getX402Config(paymentRequirements.network);
     const valid = await verify(client, paymentPayload, paymentRequirements, config);
     console.log("Verify result:", JSON.stringify(valid, null, 2));

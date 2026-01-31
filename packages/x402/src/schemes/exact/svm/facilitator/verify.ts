@@ -82,6 +82,8 @@ export async function verify(
     // simulate the transaction to ensure it will execute successfully
     const simulateResult = await signAndSimulateTransaction(signer, decodedTransaction, rpc);
     if (simulateResult.value?.err) {
+      console.error("Transaction simulation failed:", JSON.stringify(simulateResult.value.err));
+      console.error("Simulation logs:", simulateResult.value?.logs);
       throw new Error(`invalid_exact_svm_payload_transaction_simulation_failed`);
     }
 
